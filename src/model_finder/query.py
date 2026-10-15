@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 
 from qdrant_client import models
 
-from . import catalog, config, enrich, howto, index, llm
+from . import catalog, config, enrich, howto, index, jev, llm
 from .summarize import TASK_PLAIN, human_params, task_label
 
 DEVICES = ["phone", "mac", "laptop", "gpu", "server", "any"]
@@ -123,7 +123,13 @@ def parse_rules(q: str) -> dict:
 def make_plan(question: str, device: str | None = None, use_llm: bool = True) -> Plan:
     rules = parse_rules(question)
     parsed, parser = {}, "rules"
-    if use_llm and llm.available():
+    if use_llm and jev.available():
+        try:
+            parsed = jev.parse(question)
+            parser = jev.name()
+        except Exception as e:  # Jev down / bad key -> fall through to the LLM or rules
+            print(f"  (Jev parse failed, falling back: {e!r})")
+    if not parsed and use_llm and llm.available() and config.PARSER in ("auto", "llm"):
         try:
             parsed = llm.complete_json(SYSTEM, f"Request: {question}", SCHEMA, max_tokens=400, timeout=45)
             parser = llm.name()
@@ -131,8 +137,10 @@ def make_plan(question: str, device: str | None = None, use_llm: bool = True) ->
             print(f"  (LLM parse failed, using rules: {e!r})")
     p = Plan(question=question, semantic_query=(parsed.get("semantic_query") or question).strip(), parser=parser)
     tasks = [t for t in (parsed.get("tasks") or []) if t in TASK_PLAIN]
-    # rules win when they are specific and the LLM disagrees completely (small local models drift)
-    if rules["tasks"] and not set(tasks) & set(rules["tasks"]):
+    # rules win when they are specific and the LLM disagrees completely (small local models drift);
+    # Jev is calibrated, so it only gets overruled when it says it is unsure
+    jev_sure = ((parsed.get("_jev") or {}).get("task") or {}).get("confidence", 0) >= 0.5
+    if rules["tasks"] and not set(tasks) & set(rules["tasks"]) and not jev_sure:
         tasks = rules["tasks"] + tasks[:1]
     p.tasks = list(dict.fromkeys(tasks or rules["tasks"]))[:3]
     dev = device if device and device != "auto" else None
@@ -456,19 +464,63 @@ def ask(question: str, device: str | None = None, limit: int = 8, use_llm: bool 
             break
     t2 = time.time()
     # show the original model (root) with all its builds, not a random copy
+    use_jev = use_llm and p.parser.startswith("jev")
+    pool = ranked[: max(limit, config.RERANK_N if use_jev else limit)]
     with catalog.session() as con:
-        roots = catalog.get_many(con, list({r.get("family_root") or r["id"] for _, r in ranked[:limit]}))
-    results = []
-    for s, r in ranked[:limit]:
-        rec = roots.get(r.get("family_root") or r["id"]) or r
-        results.append(to_result(rec, s, p))
+        roots = catalog.get_many(con, list({r.get("family_root") or r["id"] for _, r in pool}))
+    pool = [(s, roots.get(r.get("family_root") or r["id"]) or r) for s, r in pool]
+    fit: dict[str, float] = {}
+    if use_jev and pool:
+        try:  # Jev judges each shortlisted model against the request; blend with relevance/popularity
+            fit = jev.fit_scores(question, plan_text(p), [r for _, r in pool])
+            pool = sorted(((s + 0.35 * fit.get(r["id"], 0.5), r) for s, r in pool), key=lambda x: -x[0])
+        except Exception as e:
+            print(f"  (Jev re-rank failed, keeping search order: {e!r})")
     t3 = time.time()
-    ans = overview(question, results) if answer and use_llm else None
+    results = []
+    for s, rec in pool[:limit]:
+        res = to_result(rec, s, p)
+        if rec["id"] in fit:
+            res["fit"] = round(fit[rec["id"]], 3)
+        results.append(res)
+    if fit:
+        ans = quick_answer(results) if answer else None
+    else:
+        ans = overview(question, results) if answer and use_llm else None
     plan = asdict(p)
     plan["parser"] = p.parser
     plan["search_text"] = text
-    return {
-        "question": question, "plan": plan, "relaxed": relaxed, "answer": ans, "results": results,
-        "timing_ms": {"parse": int((t1 - t0) * 1000), "search": int((t2 - t1) * 1000),
-                      "explain": int((t3 - t2) * 1000), "total": int((time.time() - t0) * 1000)},
-    }
+    timing = {"parse": int((t1 - t0) * 1000), "search": int((t2 - t1) * 1000)}
+    if use_jev:
+        timing["rerank"] = int((t3 - t2) * 1000)
+    timing["total"] = int((time.time() - t0) * 1000)
+    return {"question": question, "plan": plan, "relaxed": relaxed, "answer": ans, "results": results,
+            "timing_ms": timing}
+
+
+def plan_text(p: Plan) -> str:
+    bits = [", ".join(task_label(t) for t in p.tasks) or "any task"]
+    if p.device != "any":
+        bits.append(f"must run on a {p.device}" + (f" within about {p.ram_cap_gb:g} GB of memory" if p.ram_cap_gb else ""))
+    if p.license_open:
+        bits.append("commercial use allowed")
+    if p.languages:
+        bits.append("languages: " + ", ".join(p.languages))
+    return "; ".join(bits)
+
+
+def quick_answer(results: list[dict]) -> str | None:
+    """Instant summary from the re-ranked list (no text generation)."""
+    if not results:
+        return None
+    a = results[0]
+    s = f"Try {a['id']} first"
+    if a.get("best_variant_repo") and a["best_variant_repo"] != a["id"]:
+        s += f" (use the {a['best_variant']} build {a['best_variant_repo']})"
+    if a.get("ram_gb_min"):
+        s += f" — about {a['ram_gb_min']:g} GB of memory"
+    s += "."
+    if len(results) > 1:
+        b = results[1]
+        s += f" Alternative: {b['id']}" + (f", about {b['ram_gb_min']:g} GB." if b.get("ram_gb_min") else ".")
+    return s

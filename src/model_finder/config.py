@@ -5,6 +5,23 @@ import os
 from pathlib import Path
 
 ROOT = Path(os.environ.get("MF_HOME", Path(__file__).resolve().parents[2]))
+
+
+def _load_env_file(path: Path) -> None:
+    """Read KEY=VALUE lines from .env (gitignored) without overriding variables already set."""
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip().removeprefix("export ").strip(), v.strip().strip("'\""))
+
+
+_load_env_file(ROOT / ".env")
 DATA = ROOT / "data"
 RAW = DATA / "raw"
 PARQUET = RAW / "models.parquet"
@@ -35,5 +52,12 @@ LLM = os.environ.get("MF_LLM", "auto")
 OLLAMA_URL = os.environ.get("MF_OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODELS = [m for m in os.environ.get("MF_OLLAMA_MODEL", "qwen3:4b,qwen3.5:2b,llama3.2:3b,gemma4:12b").split(",") if m]
 ANTHROPIC_MODEL = os.environ.get("MF_ANTHROPIC_MODEL", "claude-haiku-5-5")
+
+# Question understanding + re-ranking: "auto" uses TypeSafe Jev when TYPESAFE_API_KEY is set, else the LLM above.
+# "jev" / "llm" / "rules" force one.
+PARSER = os.environ.get("MF_PARSER", "auto")
+JEV_MODEL = os.environ.get("MF_JEV_MODEL", "jev-latest")
+JEV_TIMEOUT = float(os.environ.get("MF_JEV_TIMEOUT", 10))
+RERANK_N = int(os.environ.get("MF_RERANK_N", 30))  # shortlist size Jev re-scores (one parallel question each)
 
 WEB_PORT = int(os.environ.get("MF_PORT", 8765))

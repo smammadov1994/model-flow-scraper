@@ -158,11 +158,12 @@ def cmd_ask(a):
     if res["answer"]:
         print("\n" + textwrap.fill(res["answer"], 100))
     for i, r in enumerate(res["results"], 1):
-        print(f"\n{i}. {r['id']}  [{r['device_tier']}]  {r['url']}")
+        fit = f"  fit {r['fit']:.2f}" if r.get("fit") is not None else ""
+        print(f"\n{i}. {r['id']}  [{r['device_tier']}]{fit}  {r['url']}")
         print(textwrap.fill(r["why"], 100, initial_indent="   ", subsequent_indent="   "))
         print(textwrap.fill("Run: " + r["how_to_run"], 100, initial_indent="   ", subsequent_indent="        "))
     t = res["timing_ms"]
-    print(f"\n({t['total']} ms: understand {t['parse']}, search {t['search']}, explain {t['explain']})")
+    print(f"\n({t['total']} ms: " + ", ".join(f"{k} {v}" for k, v in t.items() if k != "total") + ")")
 
 
 def cmd_serve(a):

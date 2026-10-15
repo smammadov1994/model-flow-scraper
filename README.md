@@ -212,6 +212,22 @@ repo's real dtype (never assumes fp32). Example: an 8B model at Q4_K_M ≈ 4.85 
 If you say how much memory you have, that replaces the default: "under 8GB VRAM" → 8 GB; "32GB MacBook"
 → 70% of 32; a phone gets half its RAM.
 
+## Fast mode with TypeSafe Jev
+
+If `TYPESAFE_API_KEY` is set (put it in `.env`, see `.env.example`), two steps use TypeSafe's Jev, a "System One"
+decision model that answers typed multiple-choice / yes-no questions with probabilities in ~0.1–0.5 s:
+
+1. **Understanding the question** — one call asks, in parallel: what task (from the full task list), which
+   device, which language, commercial use needed?, newest wanted?, about code?, voice cloning? Numbers like
+   "8GB" or "under 3B" are still read by plain code (Jev's docs say it is weak at numbers).
+2. **Re-ranking** — the top 30 search results each get one yes/no question, "is this a good fit for the
+   request?", all in one call. That probability is blended into the ranking (shown as `fit` in the CLI) and the
+   summary line is built from the top picks instantly instead of being written by the local LLM.
+
+The question and short model descriptions are sent to TypeSafe. If Jev errors or the key is missing, everything
+falls back to the local LLM / keyword rules. Force a mode with `MF_PARSER=jev|llm|rules`; pick a model version
+with `MF_JEV_MODEL` (default `jev-latest`); change the shortlist size with `MF_RERANK_N`.
+
 ## LLM options
 
 `MF_LLM=auto` (default) picks: Anthropic API if `ANTHROPIC_API_KEY` is set (`MF_ANTHROPIC_MODEL`,
