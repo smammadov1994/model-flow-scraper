@@ -1,0 +1,518 @@
+{
+  "id": "modelFinderIngest",
+  "name": "Model Finder - data ingestion (HF + Replicate + X)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "run-manually",
+      "name": "Run manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "every-6-hours",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        500
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "hf-newest-models",
+      "name": "HF newest models",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: fetch one Hugging Face model list and slim it.\n// https://huggingface.co/api/models?sort=createdAt&direction=-1&limit=1000&expand[]=author&expand[]=baseModels&expand[]=cardData&expand[]=createdAt&expand[]=downloads&expand[]=gated&expand[]=gguf&expand[]=inferenceProviderMapping&expand[]=lastModified&expand[]=library_name&expand[]=likes&expand[]=pipeline_tag&expand[]=safetensors&expand[]=siblings&expand[]=tags&expand[]=trendingScore is filled in by build_workflow.py.\n// Keep only the Hugging Face fields the join uses, so node outputs stay small enough\n// for the n8n editor to show live.\nconst WEIGHT_RE = /\\.(gguf|safetensors|onnx|onnx_data|pte|tflite|task|litertlm|mlmodel|bin|pt|pth|ckpt|nemo)$|\\.mlpackage\\/|\\.mlmodelc\\/|model_index\\.json$/i;\nfunction slimHf(m) {\n  const card = m.cardData || {};\n  const files = (m.siblings || []).map(s => s.rfilename);\n  return {\n    id: m.id, author: m.author, pipeline_tag: m.pipeline_tag, library_name: m.library_name, tags: m.tags || [],\n    downloads: m.downloads, likes: m.likes, trendingScore: m.trendingScore,\n    createdAt: m.createdAt, lastModified: m.lastModified, gated: m.gated, baseModels: m.baseModels,\n    inferenceProviderMapping: (m.inferenceProviderMapping || []).map(p => ({ provider: p.provider })),\n    safetensors: m.safetensors ? { parameters: m.safetensors.parameters, total: m.safetensors.total } : null,\n    gguf: m.gguf ? { total: m.gguf.total, architecture: m.gguf.architecture, context_length: m.gguf.context_length } : null,\n    cardData: {\n      license: card.license, license_name: card.license_name, license_link: card.license_link,\n      language: card.language, base_model: card.base_model, base_model_relation: card.base_model_relation,\n      pipeline_tag: card.pipeline_tag, library_name: card.library_name, tags: card.tags,\n    },\n    siblings: files.filter(f => WEIGHT_RE.test(f)).slice(0, 200).map(rfilename => ({ rfilename })),\n    file_count: files.length,\n  };\n}\n\ntry {\n  const res = await this.helpers.httpRequest({ url: 'https://huggingface.co/api/models?sort=createdAt&direction=-1&limit=1000&expand[]=author&expand[]=baseModels&expand[]=cardData&expand[]=createdAt&expand[]=downloads&expand[]=gated&expand[]=gguf&expand[]=inferenceProviderMapping&expand[]=lastModified&expand[]=library_name&expand[]=likes&expand[]=pipeline_tag&expand[]=safetensors&expand[]=siblings&expand[]=tags&expand[]=trendingScore', json: true, timeout: 120000 });\n  return res.map(m => ({ json: slimHf(m) }));\n} catch (e) {\n  return [{ json: { error: `HF list failed: ${e.message}` } }];\n}\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "hf-trending-models",
+      "name": "HF trending models",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: fetch one Hugging Face model list and slim it.\n// https://huggingface.co/api/models?sort=trendingScore&direction=-1&limit=500&expand[]=author&expand[]=baseModels&expand[]=cardData&expand[]=createdAt&expand[]=downloads&expand[]=gated&expand[]=gguf&expand[]=inferenceProviderMapping&expand[]=lastModified&expand[]=library_name&expand[]=likes&expand[]=pipeline_tag&expand[]=safetensors&expand[]=siblings&expand[]=tags&expand[]=trendingScore is filled in by build_workflow.py.\n// Keep only the Hugging Face fields the join uses, so node outputs stay small enough\n// for the n8n editor to show live.\nconst WEIGHT_RE = /\\.(gguf|safetensors|onnx|onnx_data|pte|tflite|task|litertlm|mlmodel|bin|pt|pth|ckpt|nemo)$|\\.mlpackage\\/|\\.mlmodelc\\/|model_index\\.json$/i;\nfunction slimHf(m) {\n  const card = m.cardData || {};\n  const files = (m.siblings || []).map(s => s.rfilename);\n  return {\n    id: m.id, author: m.author, pipeline_tag: m.pipeline_tag, library_name: m.library_name, tags: m.tags || [],\n    downloads: m.downloads, likes: m.likes, trendingScore: m.trendingScore,\n    createdAt: m.createdAt, lastModified: m.lastModified, gated: m.gated, baseModels: m.baseModels,\n    inferenceProviderMapping: (m.inferenceProviderMapping || []).map(p => ({ provider: p.provider })),\n    safetensors: m.safetensors ? { parameters: m.safetensors.parameters, total: m.safetensors.total } : null,\n    gguf: m.gguf ? { total: m.gguf.total, architecture: m.gguf.architecture, context_length: m.gguf.context_length } : null,\n    cardData: {\n      license: card.license, license_name: card.license_name, license_link: card.license_link,\n      language: card.language, base_model: card.base_model, base_model_relation: card.base_model_relation,\n      pipeline_tag: card.pipeline_tag, library_name: card.library_name, tags: card.tags,\n    },\n    siblings: files.filter(f => WEIGHT_RE.test(f)).slice(0, 200).map(rfilename => ({ rfilename })),\n    file_count: files.length,\n  };\n}\n\ntry {\n  const res = await this.helpers.httpRequest({ url: 'https://huggingface.co/api/models?sort=trendingScore&direction=-1&limit=500&expand[]=author&expand[]=baseModels&expand[]=cardData&expand[]=createdAt&expand[]=downloads&expand[]=gated&expand[]=gguf&expand[]=inferenceProviderMapping&expand[]=lastModified&expand[]=library_name&expand[]=likes&expand[]=pipeline_tag&expand[]=safetensors&expand[]=siblings&expand[]=tags&expand[]=trendingScore', json: true, timeout: 120000 });\n  return res.map(m => ({ json: slimHf(m) }));\n} catch (e) {\n  return [{ json: { error: `HF list failed: ${e.message}` } }];\n}\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "pick-bases-for-variants",
+      "name": "Pick bases for variants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Pick bases for variants\"\n// From the trending list, pick original models (not already quantized copies) whose\n// smaller community copies (GGUF / MLX / FP8 ...) are worth looking up.\nconst LOOKUP_TASKS = new Set(['text-generation', 'image-text-to-text', 'any-to-any', 'audio-text-to-text',\n  'video-text-to-text', 'automatic-speech-recognition', 'text-to-speech', 'text-to-image', 'image-to-image',\n  'text-to-video', 'image-to-video', 'feature-extraction', 'sentence-similarity']);\nconst MAX = 100;\nconst picked = $input.all()\n  .map(i => i.json)\n  .filter(m => m && m.id && !m.error)\n  .filter(m => LOOKUP_TASKS.has(m.pipeline_tag))\n  .filter(m => !(m.baseModels && m.baseModels.relation === 'quantized'))\n  .filter(m => !(m.tags || []).some(t => ['gguf', 'mlx'].includes(t)))\n  .sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0))\n  .slice(0, MAX);\nreturn picked.map(m => ({ json: { id: m.id } }));\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "hf-quantized-variants",
+      "name": "HF quantized variants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: for each picked base model, fetch its most-downloaded quantized copies.\n// Keep only the Hugging Face fields the join uses, so node outputs stay small enough\n// for the n8n editor to show live.\nconst WEIGHT_RE = /\\.(gguf|safetensors|onnx|onnx_data|pte|tflite|task|litertlm|mlmodel|bin|pt|pth|ckpt|nemo)$|\\.mlpackage\\/|\\.mlmodelc\\/|model_index\\.json$/i;\nfunction slimHf(m) {\n  const card = m.cardData || {};\n  const files = (m.siblings || []).map(s => s.rfilename);\n  return {\n    id: m.id, author: m.author, pipeline_tag: m.pipeline_tag, library_name: m.library_name, tags: m.tags || [],\n    downloads: m.downloads, likes: m.likes, trendingScore: m.trendingScore,\n    createdAt: m.createdAt, lastModified: m.lastModified, gated: m.gated, baseModels: m.baseModels,\n    inferenceProviderMapping: (m.inferenceProviderMapping || []).map(p => ({ provider: p.provider })),\n    safetensors: m.safetensors ? { parameters: m.safetensors.parameters, total: m.safetensors.total } : null,\n    gguf: m.gguf ? { total: m.gguf.total, architecture: m.gguf.architecture, context_length: m.gguf.context_length } : null,\n    cardData: {\n      license: card.license, license_name: card.license_name, license_link: card.license_link,\n      language: card.language, base_model: card.base_model, base_model_relation: card.base_model_relation,\n      pipeline_tag: card.pipeline_tag, library_name: card.library_name, tags: card.tags,\n    },\n    siblings: files.filter(f => WEIGHT_RE.test(f)).slice(0, 200).map(rfilename => ({ rfilename })),\n    file_count: files.length,\n  };\n}\n\nconst ids = $input.all().map(i => i.json.id).filter(Boolean);\nconst out = [];\nconst errors = [];\nfor (let i = 0; i < ids.length; i += 5) {\n  const batch = ids.slice(i, i + 5);\n  const results = await Promise.all(batch.map(id => this.helpers.httpRequest({\n    url: `https://huggingface.co/api/models?filter=base_model:quantized:${id}&sort=downloads&direction=-1&limit=6&expand[]=author&expand[]=baseModels&expand[]=cardData&expand[]=createdAt&expand[]=downloads&expand[]=gated&expand[]=gguf&expand[]=inferenceProviderMapping&expand[]=lastModified&expand[]=library_name&expand[]=likes&expand[]=pipeline_tag&expand[]=safetensors&expand[]=siblings&expand[]=tags&expand[]=trendingScore`,\n    json: true, timeout: 60000,\n  }).catch(e => { errors.push(`${id}: ${e.message}`); return []; })));\n  for (const list of results) for (const m of list) out.push({ json: slimHf(m) });\n  await new Promise(r => setTimeout(r, 500));\n}\nif (errors.length) out.push({ json: { error: `variant lookups failed for ${errors.length} models`, details: errors.slice(0, 10) } });\nreturn out;\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "replicate-models",
+      "name": "Replicate models",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: page through Replicate's public models (newest first) and slim each one.\nconst token = $env.REPLICATE_API_TOKEN;\nif (!token) return [{ json: { error: 'REPLICATE_API_TOKEN is not set' } }];\nconst headers = { Authorization: `Bearer ${token}` };\nconst MAX_PAGES = 40;\nfunction slimReplicate(r) {\n  const lv = r.latest_version || null;\n  const input = lv && lv.openapi_schema && lv.openapi_schema.components && lv.openapi_schema.components.schemas\n    && lv.openapi_schema.components.schemas.Input;\n  return {\n    owner: r.owner, name: r.name, url: r.url, description: r.description, visibility: r.visibility,\n    run_count: r.run_count, github_url: r.github_url, paper_url: r.paper_url, license_url: r.license_url,\n    weights_url: r.weights_url, cover_image_url: r.cover_image_url, is_official: r.is_official,\n    latest_version: lv ? { id: lv.id, created_at: lv.created_at,\n      input_names: input && input.properties ? Object.keys(input.properties).slice(0, 25) : [] } : null,\n  };\n}\nconst out = [];\nlet url = 'https://api.replicate.com/v1/models?sort_by=model_created_at&sort_direction=desc';\ntry {\n  for (let page = 0; url && page < MAX_PAGES; page++) {\n    let body;\n    for (let attempt = 1; ; attempt++) {  // Replicate pages are sometimes slow; retry before giving up\n      try { body = await this.helpers.httpRequest({ url, headers, json: true, timeout: 120000 }); break; }\n      catch (e) { if (attempt >= 3) throw e; await new Promise(r => setTimeout(r, 3000 * attempt)); }\n    }\n    for (const r of body.results || []) out.push({ json: slimReplicate(r) });\n    url = body.next;\n    await new Promise(r => setTimeout(r, 250));\n  }\n} catch (e) {\n  out.push({ json: { error: `Replicate models stopped after ${out.length} models: ${e.message}` } });\n}\nreturn out;\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "replicate-collections",
+      "name": "Replicate collections",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        600
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: fetch every Replicate collection and the models in it (slimmed).\nconst token = $env.REPLICATE_API_TOKEN;\nif (!token) return [{ json: { error: 'REPLICATE_API_TOKEN is not set' } }];\nconst headers = { Authorization: `Bearer ${token}` };\nconst out = [];\ntry {\n  const slugs = [];\n  let url = 'https://api.replicate.com/v1/collections';\n  while (url) {\n    const body = await this.helpers.httpRequest({ url, headers, json: true, timeout: 60000 });\n    for (const c of body.results || []) if (c.slug) slugs.push(c.slug);\n    url = body.next;\n  }\n  for (const slug of slugs) {\n    const c = await this.helpers.httpRequest({ url: `https://api.replicate.com/v1/collections/${slug}`, headers, json: true, timeout: 60000 });\n    out.push({ json: { slug: c.slug, name: c.name, models: (c.models || []).map(r => ({\n      owner: r.owner, name: r.name, url: r.url, description: r.description, run_count: r.run_count,\n      github_url: r.github_url, paper_url: r.paper_url, license_url: r.license_url, cover_image_url: r.cover_image_url,\n      latest_version: r.latest_version ? { id: r.latest_version.id, created_at: r.latest_version.created_at } : null,\n    })) } });\n    await new Promise(r => setTimeout(r, 150));\n  }\n} catch (e) {\n  out.push({ json: { error: `Replicate collections failed: ${e.message}` } });\n}\nreturn out;\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "read-x-signals",
+      "name": "Read X signals",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        300,
+        800
+      ],
+      "parameters": {
+        "fileSelector": "/data/x/x_signals.jsonl",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "parse-x-file",
+      "name": "Parse X file",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        800
+      ],
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "data",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "wait-for-all-sources",
+      "name": "Wait for all sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        980,
+        400
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 6
+      }
+    },
+    {
+      "id": "clean-&-join",
+      "name": "Clean & join",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Clean & join\"\n// Pulls the raw output of every source node, cleans each record, joins records that\n// describe the same model (Hugging Face repo <-> Replicate model <-> X posts), and\n// emits ONE item per model in the schema documented in ../SCHEMA.md.\n// Size/RAM/device-tier rules mirror src/model_finder/enrich.py so both pipelines agree.\n\nconst FETCHED_AT = new Date().toISOString();\nconst SCHEMA_VERSION = '1.0';\n\n// ---------------------------------------------------------------- read source nodes\nconst sourceErrors = [];\nfunction nodeItems(name) {\n  let items;\n  try { items = $(name).all().map(i => i.json); } catch (e) { return []; }\n  for (const j of items) if (j && j.error) sourceErrors.push(`${name}: ${j.error}`);\n  return items.filter(j => j && !j.error);\n}\n\nconst hfNewestRaw = nodeItems('HF newest models');\nconst hfTrendingRaw = nodeItems('HF trending models');\nconst hfVariantsRaw = nodeItems('HF quantized variants');\nconst repPages = nodeItems('Replicate models');\nconst repCollections = nodeItems('Replicate collections');\nconst xText = nodeItems('Parse X file').map(j => j.data || '').join('\\n');\n\n// ---------------------------------------------------------------- reference tables\nconst BPW = {\n  IQ1_S: 1.56, IQ1_M: 1.75, IQ2_XXS: 2.06, IQ2_XS: 2.31, IQ2_S: 2.5, IQ2_M: 2.7, Q2_K: 2.63,\n  IQ3_XXS: 3.06, IQ3_XS: 3.3, IQ3_S: 3.44, IQ3_M: 3.66, Q3_K_S: 3.5, Q3_K_M: 3.91, Q3_K_L: 4.27, Q3_K_XL: 4.3,\n  IQ4_XS: 4.25, IQ4_NL: 4.5, Q4_0: 4.55, Q4_1: 5.0, Q4_K_S: 4.58, Q4_K_M: 4.85, Q4_K_XL: 5.0, MXFP4: 4.25,\n  Q5_0: 5.54, Q5_1: 6.0, Q5_K_S: 5.54, Q5_K_M: 5.69, Q5_K_XL: 5.8, Q6_K: 6.59, Q6_K_XL: 6.8, Q8_0: 8.5, Q8_K_XL: 9.0,\n  TQ1_0: 1.69, TQ2_0: 2.06, F16: 16, BF16: 16, F32: 32,\n  int4: 4.5, int8: 8.5, fp8: 8.5, fp16: 16, bf16: 16, fp32: 32,\n};\nconst TIER_BUDGET_GB = { phone: 4.0, laptop: 12.0, gpu: 24.0 };\nconst OVERHEAD = 1.2;\nconst GEN_EXTRA_GB = 1.0;\nconst PHONE_FORMATS = new Set(['gguf', 'onnx', 'coreml', 'executorch', 'tflite', 'mlx', 'mlc']);\n\n// task -> [group, inputs, outputs, plain-English label, search keywords]\nconst TASKS = {\n  'text-generation': ['text', ['text'], ['text'], 'chat / text generation', ['llm', 'chatbot', 'assistant', 'writing']],\n  'text2text-generation': ['text', ['text'], ['text'], 'text-to-text', ['rewrite', 'summarize']],\n  'summarization': ['text', ['text'], ['text'], 'summarization', ['summarize']],\n  'translation': ['text', ['text'], ['text'], 'translation', ['translate', 'multilingual']],\n  'question-answering': ['text', ['text'], ['text'], 'question answering', ['qa']],\n  'fill-mask': ['text', ['text'], ['text'], 'fill-mask (encoder)', ['bert', 'encoder']],\n  'text-classification': ['text', ['text'], ['label'], 'text classification', ['sentiment', 'classifier', 'moderation']],\n  'token-classification': ['text', ['text'], ['label'], 'entity tagging', ['ner', 'pii']],\n  'zero-shot-classification': ['text', ['text'], ['label'], 'zero-shot classification', ['classifier']],\n  'table-question-answering': ['text', ['table', 'text'], ['text'], 'table QA', ['spreadsheet']],\n  'feature-extraction': ['embedding', ['text'], ['embedding'], 'embeddings', ['embedding', 'vector search', 'rag', 'semantic search']],\n  'sentence-similarity': ['embedding', ['text'], ['embedding'], 'sentence embeddings', ['embedding', 'similarity', 'rag']],\n  'text-ranking': ['embedding', ['text'], ['score'], 'reranker', ['rerank', 'rag', 'search']],\n  'image-classification': ['vision', ['image'], ['label'], 'image classification', ['classify images']],\n  'object-detection': ['vision', ['image'], ['boxes'], 'object detection', ['detect objects', 'yolo']],\n  'zero-shot-object-detection': ['vision', ['image', 'text'], ['boxes'], 'open-vocabulary detection', ['detect objects']],\n  'image-segmentation': ['vision', ['image'], ['mask'], 'image segmentation', ['segment', 'cutout']],\n  'mask-generation': ['vision', ['image'], ['mask'], 'mask generation', ['segment anything']],\n  'depth-estimation': ['vision', ['image'], ['depth'], 'depth estimation', ['3d', 'depth map']],\n  'keypoint-detection': ['vision', ['image'], ['keypoints'], 'pose / keypoints', ['pose']],\n  'image-feature-extraction': ['vision', ['image'], ['embedding'], 'image embeddings', ['image search']],\n  'zero-shot-image-classification': ['vision', ['image', 'text'], ['label'], 'zero-shot image classification', ['clip']],\n  'video-classification': ['vision', ['video'], ['label'], 'video classification', []],\n  'text-to-image': ['image-generation', ['text'], ['image'], 'image generation', ['generate images', 'art', 'diffusion']],\n  'image-to-image': ['image-generation', ['image', 'text'], ['image'], 'image editing', ['edit photos', 'upscale', 'inpaint']],\n  'unconditional-image-generation': ['image-generation', [], ['image'], 'image generation', []],\n  'text-to-3d': ['image-generation', ['text'], ['3d'], 'text to 3D', ['3d model']],\n  'image-to-3d': ['image-generation', ['image'], ['3d'], 'image to 3D', ['3d model']],\n  'text-to-video': ['video', ['text'], ['video'], 'video generation', ['generate video']],\n  'image-to-video': ['video', ['image', 'text'], ['video'], 'image to video', ['animate image']],\n  'video-to-video': ['video', ['video'], ['video'], 'video editing', []],\n  'automatic-speech-recognition': ['speech-in', ['audio'], ['text'], 'speech to text', ['transcription', 'dictation', 'voice input', 'asr', 'stt']],\n  'audio-classification': ['speech-in', ['audio'], ['label'], 'audio classification', ['sound detection']],\n  'voice-activity-detection': ['speech-in', ['audio'], ['label'], 'voice activity detection', ['vad']],\n  'text-to-speech': ['speech-out', ['text'], ['audio'], 'text to speech', ['voice', 'tts', 'read aloud', 'speech synthesis', 'voice generation']],\n  'text-to-audio': ['speech-out', ['text'], ['audio'], 'audio / music generation', ['music', 'sound effects']],\n  'audio-to-audio': ['speech-out', ['audio'], ['audio'], 'audio to audio', ['voice conversion', 'denoise', 'speech enhancement']],\n  'image-text-to-text': ['multimodal', ['image', 'text'], ['text'], 'vision-language chat', ['vlm', 'describe images', 'ocr']],\n  'image-to-text': ['multimodal', ['image'], ['text'], 'image captioning / OCR', ['caption', 'ocr']],\n  'visual-question-answering': ['multimodal', ['image', 'text'], ['text'], 'visual QA', ['vlm']],\n  'document-question-answering': ['multimodal', ['document', 'text'], ['text'], 'document QA', ['pdf', 'ocr']],\n  'video-text-to-text': ['multimodal', ['video', 'text'], ['text'], 'video understanding', ['video chat']],\n  'audio-text-to-text': ['multimodal', ['audio', 'text'], ['text'], 'audio understanding', ['voice assistant', 'speech chat']],\n  'any-to-any': ['multimodal', ['text', 'image', 'audio'], ['text', 'image', 'audio'], 'omni / any-to-any', ['omni', 'voice assistant']],\n  'reinforcement-learning': ['other', [], [], 'reinforcement learning', []],\n  'robotics': ['other', ['image', 'text'], ['actions'], 'robotics', ['vla', 'robot']],\n  'time-series-forecasting': ['other', ['series'], ['series'], 'time-series forecasting', ['forecast']],\n  'tabular-classification': ['other', ['table'], ['label'], 'tabular classification', []],\n  'tabular-regression': ['other', ['table'], ['number'], 'tabular regression', []],\n};\nconst LLM_TASKS = new Set(['text-generation', 'text2text-generation', 'image-text-to-text', 'any-to-any',\n  'video-text-to-text', 'audio-text-to-text', 'visual-question-answering']);\nconst GEN_TASKS = new Set(['text-to-image', 'image-to-image', 'text-to-video', 'image-to-video',\n  'video-to-video', 'unconditional-image-generation']);\nconst LIBRARY_TASK = {\n  'sentence-transformers': 'sentence-similarity', 'diffusers': 'text-to-image', 'whisperkit': 'automatic-speech-recognition',\n  'nemo': 'automatic-speech-recognition', 'pyannote-audio': 'voice-activity-detection', 'open_clip': 'zero-shot-image-classification',\n  'timm': 'image-classification', 'ultralytics': 'object-detection', 'mlx-lm': 'text-generation', 'lerobot': 'robotics',\n};\n// Keyword rules applied to names, descriptions and Replicate collection slugs.\nconst KEYWORD_TASKS = [\n  [/speech[-_ ]?to[-_ ]?text|transcri|\\basr\\b|\\bstt\\b|whisper|parakeet|canary|moonshine|dictation/i, 'automatic-speech-recognition'],\n  [/text[-_ ]?to[-_ ]?speech|\\btts\\b|voice[-_ ]?clon|kokoro|xtts|piper|chatterbox|cosyvoice|orpheus|speech synthesis|\\bvoices?\\b/i, 'text-to-speech'],\n  [/music|song|sound[-_ ]?effect|audio[-_ ]?gen|\\bsfx\\b/i, 'text-to-audio'],\n  [/image[-_ ]?to[-_ ]?video|img2vid|animate/i, 'image-to-video'],\n  [/text[-_ ]?to[-_ ]?video|video[-_ ]?gen|\\bvideo\\b/i, 'text-to-video'],\n  [/upscal|super[-_ ]?res|restor|remove[-_ ]?background|inpaint|image[-_ ]?edit|image[-_ ]?to[-_ ]?image|face[-_ ]?swap|relight/i, 'image-to-image'],\n  [/text[-_ ]?to[-_ ]?image|image[-_ ]?gen|flux|stable[-_ ]?diffusion|sdxl|\\bdiffusion\\b|imagen/i, 'text-to-image'],\n  [/\\b3d\\b|mesh|gaussian/i, 'image-to-3d'],\n  [/caption|\\bocr\\b|vision[-_ ]?language|\\bvlm\\b|image[-_ ]?to[-_ ]?text/i, 'image-text-to-text'],\n  [/embed|retriev|\\bbge\\b|\\be5\\b|\\bgte\\b/i, 'feature-extraction'],\n  [/rerank/i, 'text-ranking'],\n  [/segment|\\bsam\\b|matting/i, 'image-segmentation'],\n  [/detect|\\byolo\\b/i, 'object-detection'],\n  [/\\bllm\\b|language[-_ ]?model|\\bchat\\b|instruct|reasoning|\\bcoder?\\b|\\bgpt\\b/i, 'text-generation'],\n];\n\nconst PERMISSIVE = new Set(['apache-2.0', 'mit', 'cc-by-4.0', 'cc0-1.0', 'bigscience-openrail-m', 'creativeml-openrail-m',\n  'mpl-2.0', 'unlicense', 'cc-by-sa-4.0', 'agpl-3.0', 'afl-3.0', 'artistic-2.0', 'isc', 'wtfpl', 'ecl-2.0', 'zlib',\n  'openrail', 'openrail++', 'bsd', 'bsd-2-clause', 'bsd-3-clause', 'gpl-3.0', 'lgpl-3.0']);\nconst NONCOMMERCIAL = /(^|-)nc(-|$)|non[-_]?commercial|research/i;\nconst CUSTOM = /^(llama|gemma|qwen|deepseek|other|openmdw|health-ai|nvidia|fair|flux)/i;\n\n// Accounts/orgs whose brand-new uploads are worth keeping even before they get downloads.\nconst NOTABLE_AUTHORS = new Set(['meta-llama', 'google', 'microsoft', 'qwen', 'deepseek-ai', 'mistralai', 'nvidia',\n  'openai', 'apple', 'liquidai', 'huggingfacetb', 'stabilityai', 'black-forest-labs', 'tencent', 'baidu', 'zai-org',\n  'moonshotai', 'minimaxai', 'ibm-granite', 'allenai', 'facebook', 'hexgrad', 'resembleai', 'kyutai', 'sesame',\n  'unsloth', 'bartowski', 'lmstudio-community', 'mlx-community', 'ggml-org', 'onnx-community', 'openbmb',\n  'stepfun-ai', 'xiaomimimo', 'inclusionai', 'bytedance-seed', 'bytedance', 'lightricks', 'wan-ai', 'nari-labs',\n  'canopylabs', 'fishaudio', 'boson-ai', 'coqui', 'argmaxinc', 'pytorch', 'executorch-community', 'ai21labs', 'cohere',\n  'coherelabs', 'swiss-ai', 'servicenow-ai', 'arcee-ai', 'nousresearch', 'prime-intellect', 'thudm']);\n\n// ---------------------------------------------------------------- helpers\nconst str = x => (typeof x === 'string' && x.trim() ? x.trim() : null);\nconst arr = x => (Array.isArray(x) ? x : x == null ? [] : [x]);\nconst uniq = xs => [...new Set(xs.filter(v => v !== null && v !== undefined && v !== ''))];\nconst num = x => (typeof x === 'number' && isFinite(x) ? x : null);\nconst round = (x, d = 2) => (x == null ? null : Math.round(x * 10 ** d) / 10 ** d);\nconst norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\nconst log10 = x => Math.log10(1 + Math.max(0, x || 0));\n\nfunction paramsLabel(n) {\n  if (!n) return null;\n  if (n >= 1e9) return `${round(n / 1e9, n >= 1e10 ? 0 : 1)}B`;\n  return `${Math.round(n / 1e6)}M`;\n}\n\nfunction paramsFromName(name) {\n  const base = (name || '').split('/').pop();\n  const re = /(?<![A-Za-z0-9])(?:(\\d+)[xX])?(\\d+(?:\\.\\d+)?)([BbMm])(?![A-Za-z0-9])/g;\n  let m;\n  while ((m = re.exec(base))) {\n    const n = Math.round((m[1] ? +m[1] : 1) * +m[2] * (/b/i.test(m[3]) ? 1e9 : 1e6));\n    if (n >= 1e6 && n <= 1e13) return n;\n  }\n  return null;\n}\nfunction activeParamsFromName(name) {\n  const m = (name || '').match(/(?<![A-Za-z0-9])A(\\d+(?:\\.\\d+)?)B(?![A-Za-z0-9])/i);\n  return m ? Math.round(+m[1] * 1e9) : null;\n}\n\nconst QUANT_RES = [\n  /(?<![A-Z0-9])(IQ[1-4]_(?:XXS|XS|S|M|NL))(?![A-Z0-9])/, /(?<![A-Z0-9])(Q[2-8]_K(?:_(?:XL|[SML]))?)(?![A-Z0-9])/,\n  /(?<![A-Z0-9])(Q[4-8]_[01])(?![A-Z0-9])/, /(?<![A-Z0-9])(TQ[12]_0)(?![A-Z0-9])/, /(?<![A-Z0-9])(MXFP4)(?![A-Z0-9])/,\n  /(?<![A-Z0-9])(BF16)(?![A-Z0-9])/, /(?<![A-Z0-9])(F16)(?![A-Z0-9])/, /(?<![A-Z0-9])(F32)(?![A-Z0-9])/,\n];\nfunction ggufQuants(files) {\n  const out = [];\n  for (const f of files.filter(f => /\\.gguf$/i.test(f) && !/mmproj/i.test(f))) {\n    const base = f.split('/').pop().toUpperCase();\n    for (const re of QUANT_RES) { const m = base.match(re); if (m) { out.push(m[1]); break; } }\n  }\n  return uniq(out).sort((a, b) => (BPW[a] || 99) - (BPW[b] || 99));\n}\n\nfunction detectFormats(files, tags, library, id) {\n  const f = new Set();\n  const has = re => files.some(x => re.test(x));\n  const tag = t => tags.includes(t);\n  if (has(/\\.safetensors$/i) || tag('safetensors')) f.add('safetensors');\n  if (has(/\\.gguf$/i) || tag('gguf') || library === 'gguf') f.add('gguf');\n  if (has(/\\.onnx(_data)?$/i) || tag('onnx') || library === 'transformers.js') f.add('onnx');\n  if (has(/\\.mlpackage\\//i) || has(/\\.mlmodelc\\//i) || has(/\\.mlmodel$/i) || tag('coreml') || library === 'whisperkit') f.add('coreml');\n  if (has(/\\.pte$/i) || tag('executorch')) f.add('executorch');\n  if (has(/\\.tflite$/i) || tag('tflite') || tag('litert') || has(/\\.task$/i) || has(/\\.litertlm$/i)) f.add('tflite');\n  if (tag('mlx') || library === 'mlx' || /^mlx-community\\//i.test(id)) f.add('mlx');\n  if (has(/(^|\\/)pytorch_model.*\\.bin$/i) || has(/\\.pt$|\\.pth$|\\.ckpt$/i)) f.add('pytorch');\n  if (library === 'diffusers' || has(/model_index\\.json$/)) f.add('diffusers');\n  if (tag('awq') || /awq/i.test(id)) f.add('awq');\n  if (tag('gptq') || /gptq/i.test(id)) f.add('gptq');\n  if (tag('exl2') || /exl2/i.test(id)) f.add('exl2');\n  if (tag('bitsandbytes') || /bnb/i.test(id)) f.add('bnb');\n  if (has(/\\.nemo$/i) || library === 'nemo') f.add('nemo');\n  return [...f].sort();\n}\n\nfunction quantBitsFromName(id, tags) {\n  const s = `${id} ${tags.join(' ')}`.toLowerCase();\n  let m = s.match(/(?<![a-z0-9])(\\d+(?:\\.\\d+)?)-?bit(?![a-z0-9])/);\n  if (m) return +m[1];\n  m = s.match(/(?<![a-z0-9])(?:nv)?(?:mx)?(fp|int)([48])(?![0-9])/);\n  if (m) return +m[2];\n  if (/awq|gptq/.test(s)) return 4;\n  return null;\n}\n\nfunction inferTask(raw) {\n  const card = raw.cardData || {};\n  const tags = uniq([...arr(raw.tags), ...arr(card.tags)]);\n  if (str(raw.pipeline_tag)) return [raw.pipeline_tag, 'pipeline_tag'];\n  if (str(card.pipeline_tag)) return [card.pipeline_tag, 'card'];\n  const t = tags.find(t => TASKS[t]);\n  if (t) return [t, 'tags'];\n  const lib = (str(raw.library_name) || str(card.library_name) || '').toLowerCase();\n  if (LIBRARY_TASK[lib]) return [LIBRARY_TASK[lib], 'library'];\n  const byName = keywordTask(`${raw.id} ${tags.join(' ')}`);\n  if (byName) return [byName, 'name'];\n  return [null, 'unknown'];\n}\nfunction keywordTask(text) {\n  for (const [re, task] of KEYWORD_TASKS) if (re.test(text || '')) return task;\n  return null;\n}\n\nfunction estimateRamGb(params, bpw, task) {\n  if (!params || !bpw) return null;\n  let ram = (params * bpw / 8 / 1e9) * OVERHEAD;\n  if (LLM_TASKS.has(task)) ram += 0.17 * Math.sqrt(params / 1e9);\n  if (GEN_TASKS.has(task)) ram += GEN_EXTRA_GB;\n  return round(ram, 2);\n}\nfunction practical(v) {\n  const u = (v || '').toUpperCase();\n  return !(/^(IQ1|IQ2|Q2|TQ)/.test(u) || /^[12](\\.\\d+)?BIT$/.test(u));\n}\n\nfunction licenseInfo(id, url, name) {\n  const lid = str(id) ? id.toLowerCase() : null;\n  let commercial = 'unknown';\n  if (lid && PERMISSIVE.has(lid)) commercial = 'yes';\n  else if ((lid && NONCOMMERCIAL.test(lid)) || (name && NONCOMMERCIAL.test(name))) commercial = 'no';\n  else if (lid && CUSTOM.test(lid)) commercial = 'check_terms';\n  return { id: lid, name: str(name), url: str(url), commercial_use: commercial };\n}\n\nfunction hfRepoFromText(text) {\n  const out = [];\n  const re = /huggingface\\.co\\/(?!datasets\\/|spaces\\/|papers\\/|docs\\/|blog\\/)([A-Za-z0-9][\\w.-]*\\/[A-Za-z0-9][\\w.-]*)/g;\n  let m;\n  while ((m = re.exec(text || ''))) out.push(m[1].replace(/[.\u2026]+$/, ''));\n  return uniq(out);\n}\n\n// ---------------------------------------------------------------- 1. Hugging Face\nconst report = { fetched_at: FETCHED_AT, sources: {}, dropped: {}, joins: {}, warnings: sourceErrors };\nconst hfById = new Map();\nfor (const [list, label] of [[hfTrendingRaw, 'trending'], [hfVariantsRaw, 'variant_lookup'], [hfNewestRaw, 'newest']]) {\n  for (const m of list) {\n    if (!str(m.id)) continue;\n    const prev = hfById.get(m.id);\n    if (prev) { prev._lists.add(label); continue; }\n    hfById.set(m.id, { ...m, _lists: new Set([label]) });\n  }\n}\nreport.sources.huggingface = { trending: hfTrendingRaw.length, newest: hfNewestRaw.length,\n  quantized_variants: hfVariantsRaw.length, unique: hfById.size };\n\nconst entities = new Map(); // key -> entity\nconst nameIndex = new Map(); // normalized name -> key\n\nfunction indexName(name, key) {\n  const n = norm(name);\n  if (n.length >= 4 && !nameIndex.has(n)) nameIndex.set(n, key);\n}\n\nfunction newEntity(key, displayName) {\n  return {\n    id: key, name: displayName, aliases: [], status: 'released',\n    task: null, size: null, formats: [], quantizations: [], hardware: null, license: null,\n    languages: [], lineage: null,\n    availability: { huggingface: null, replicate: null },\n    popularity: {}, social: null,\n    links: { huggingface: null, replicate: null, github: null, paper: null, x_posts: [] },\n    dates: {}, description: null,\n    _tags: [], _taskSource: null, _sources: new Set(),\n  };\n}\n\nfor (const m of hfById.values()) {\n  const card = m.cardData || {};\n  const tags = uniq([...arr(m.tags), ...arr(card.tags)]);\n  const files = arr(m.siblings).map(s => s.rfilename).filter(Boolean);\n  const library = (str(m.library_name) || str(card.library_name) || '').toLowerCase() || null;\n  const [task, taskSource] = inferTask(m);\n  const key = `hf:${m.id}`;\n  const e = newEntity(key, m.id.split('/').pop());\n  e._sources.add('huggingface');\n  e._tags = tags;\n  e._taskSource = taskSource;\n  e._task = task;\n\n  // size\n  const stTotal = num(m.safetensors && m.safetensors.total);\n  const ggTotal = num(m.gguf && m.gguf.total);\n  const nameParams = paramsFromName(m.id);\n  // Single-file / ComfyUI-style repos often only state the size in weight filenames (\"...-22b-dev-bf16.safetensors\").\n  const fileParams = nameParams ? null : Math.max(0, ...files\n    .filter(f => /\\.(safetensors|gguf|bin|pt|pth|ckpt)$/i.test(f) && !/lora|vae|upscal|text_encoder|mmproj/i.test(f))\n    .map(f => paramsFromName(f.replace(/\\//g, '-')) || 0)) || null;\n  let params = stTotal || ggTotal || nameParams || fileParams;\n  const paramsSource = stTotal ? 'safetensors' : ggTotal ? 'gguf_header' : nameParams ? 'name' : fileParams ? 'filename' : null;\n  const stDtypes = m.safetensors && m.safetensors.parameters ? Object.keys(m.safetensors.parameters) : [];\n  // packed int dtypes (U8/I32) mean the safetensors count is of packed storage, not real params\n  if (stTotal && stDtypes.some(d => ['U32', 'I32', 'U8'].includes(d)) && nameParams) params = nameParams;\n  e._params = params;\n  e.size = {\n    params, params_label: paramsLabel(params), params_active: activeParamsFromName(m.id),\n    params_source: paramsSource, native_dtypes: stDtypes,\n    context_length: num(m.gguf && m.gguf.context_length),\n    architecture: str(m.gguf && m.gguf.architecture) || null,\n  };\n\n  e.formats = detectFormats(files, tags, library, m.id);\n  e.quantizations = ggufQuants(files);\n  e._quantBits = quantBitsFromName(m.id, tags);\n\n  const lineage = m.baseModels && arr(m.baseModels.models).length\n    ? { relation: str(m.baseModels.relation), base_models: arr(m.baseModels.models).map(b => b.id) }\n    : (card.base_model ? { relation: str(card.base_model_relation), base_models: arr(card.base_model) } : null);\n  e.lineage = lineage;\n\n  const licTag = (tags.find(t => t.startsWith('license:')) || '').slice(8) || null;\n  e.license = licenseInfo(str(card.license) || licTag, str(card.license_link), str(card.license_name));\n  e.languages = uniq(arr(card.language).map(l => String(l).toLowerCase()));\n\n  e.availability.huggingface = {\n    repo: m.id, author: m.author || m.id.split('/')[0], library, gated: m.gated || false,\n    lists: [...m._lists], file_count: m.file_count ?? files.length,\n    inference_providers: arr(m.inferenceProviderMapping).map(p => p.provider).filter(Boolean),\n  };\n  e.links.huggingface = `https://huggingface.co/${m.id}`;\n  e.popularity = {\n    hf_downloads_30d: num(m.downloads) || 0, hf_likes: num(m.likes) || 0, hf_trending_score: num(m.trendingScore) || 0,\n  };\n  e.dates = { created_at: str(m.createdAt), last_modified: str(m.lastModified) };\n  entities.set(key, e);\n  indexName(m.id.split('/').pop(), key);\n  indexName(m.id, key);\n}\n\n// ---------------------------------------------------------------- 2. Replicate\nconst repModels = new Map();\nfor (const r of repPages) if (r && r.owner && r.name) repModels.set(`${r.owner}/${r.name}`, r);\nconst repCollectionsBySlug = {};\nfor (const c of repCollections) {\n  if (!c || !c.slug) continue;\n  for (const r of arr(c.models)) {\n    if (!r || !r.owner || !r.name) continue;\n    const k = `${r.owner}/${r.name}`;\n    if (!repModels.has(k)) repModels.set(k, r);\n    (repCollectionsBySlug[k] = repCollectionsBySlug[k] || []).push(c.slug);\n  }\n}\nreport.sources.replicate = { models: repModels.size, collections: repCollections.length,\n  note: repPages.length || repCollections.length ? undefined : 'no Replicate data (missing REPLICATE_API_TOKEN?)' };\n\nlet repJoined = 0;\nfor (const [k, r] of repModels) {\n  const text = [r.description, r.github_url, r.paper_url, r.weights_url, r.license_url].filter(Boolean).join(' ');\n  const hfRepos = hfRepoFromText(text);\n  let key = hfRepos.map(h => `hf:${h}`).find(h => entities.has(h));\n  if (!key) key = nameIndex.get(norm(r.name));\n  let e = key ? entities.get(key) : null;\n  if (e) repJoined++;\n  else {\n    key = `replicate:${k}`;\n    e = newEntity(key, r.name);\n    e.status = 'api_only';\n    entities.set(key, e);\n    indexName(r.name, key);\n  }\n  e._sources.add('replicate');\n  const collections = uniq(repCollectionsBySlug[k] || []);\n  e.availability.replicate = {\n    model: k, url: r.url || `https://replicate.com/${k}`, run_count: num(r.run_count) || 0,\n    visibility: r.visibility || null, is_official: r.is_official ?? collections.includes('official'), collections,\n    inputs: (r.latest_version && r.latest_version.input_names) || [],\n    latest_version: r.latest_version ? r.latest_version.id : null,\n    cover_image_url: r.cover_image_url || null, hf_repos_mentioned: hfRepos,\n  };\n  e.links.replicate = e.availability.replicate.url;\n  e.links.github = e.links.github || str(r.github_url);\n  e.links.paper = e.links.paper || str(r.paper_url);\n  e.popularity.replicate_runs = num(r.run_count) || 0;\n  if (!e.description && str(r.description)) e.description = r.description.trim().slice(0, 600);\n  if (!e._task) {\n    const t = keywordTask(collections.join(' ')) || keywordTask(`${r.name} ${r.description || ''}`);\n    if (t) { e._task = t; e._taskSource = collections.length ? 'replicate_collection' : 'replicate_text'; }\n  }\n  if (!e.license || !e.license.id) e.license = licenseInfo(null, r.license_url, null);\n  if (!e.dates.created_at && r.latest_version) e.dates.created_at = str(r.latest_version.created_at);\n}\nreport.joins.replicate_matched_to_hf = repJoined;\n\n// ---------------------------------------------------------------- 3. X signals\nconst xLatest = new Map();\nlet xBad = 0;\nfor (const line of xText.split('\\n')) {\n  if (!line.trim()) continue;\n  let rec;\n  try { rec = JSON.parse(line); } catch (e) { xBad++; continue; }\n  if (!rec || !rec.url || rec.status) continue;\n  const prev = xLatest.get(rec.url);\n  if (!prev || String(rec.seen_at) > String(prev.seen_at)) xLatest.set(rec.url, rec);\n}\nreport.sources.x = { posts: xLatest.size, unparseable_lines: xBad };\n\nconst X_WINDOW_DAYS = 14;\nlet xMatched = 0, xAnnounced = 0;\nfor (const p of xLatest.values()) {\n  const ageDays = p.posted_at ? (Date.now() - Date.parse(p.posted_at)) / 864e5 : 0;\n  if (ageDays > X_WINDOW_DAYS) continue;\n  const keys = new Set();\n  for (const h of uniq([...arr(p.hf_repos), ...hfRepoFromText(arr(p.other_links).join(' '))])) {\n    const clean = h.replace(/[.\u2026]+$/, '');\n    if (entities.has(`hf:${clean}`)) keys.add(`hf:${clean}`);\n    else {\n      const k = nameIndex.get(norm(clean)) || nameIndex.get(norm(clean.split('/').pop()));\n      if (k) keys.add(k);\n      else if (/^[\\w.-]+\\/[\\w.-]+$/.test(clean) && !clean.endsWith('-')) {\n        const key = `hf:${clean}`;\n        const e = newEntity(key, clean.split('/').pop());\n        e.status = 'seen_on_x';\n        e.links.huggingface = `https://huggingface.co/${clean}`;\n        e._needsHf = true;\n        entities.set(key, e);\n        indexName(clean.split('/').pop(), key);\n        keys.add(key);\n      }\n    }\n  }\n  for (const name of arr(p.models)) {\n    const k = nameIndex.get(norm(name));\n    if (k) { keys.add(k); continue; }\n    if (keys.size) continue; // already attached via a link\n    const key = `x:${norm(name)}`;\n    if (norm(name).length < 3) continue;\n    if (!entities.has(key)) {\n      const e = newEntity(key, String(name).trim());\n      e.status = p.kind === 'weights_soon' ? 'announced' : 'seen_on_x';\n      entities.set(key, e);\n      indexName(name, key);\n      xAnnounced++;\n    }\n    keys.add(key);\n  }\n  if (keys.size) xMatched++;\n  const likes = num(p.likes) || 0, reposts = num(p.reposts) || 0;\n  const engagement = likes + 3 * reposts;\n  const decayed = engagement * Math.exp(-ageDays / 7);\n  for (const key of keys) {\n    const e = entities.get(key);\n    e._sources.add('x');\n    const s = e.social || (e.social = { x_mentions: 0, x_engagement: 0, x_buzz: 0, takes: [], top_posts: [],\n      kinds: [], size_hints: [], license_hints: [], on_device_mentions: 0, modality_hints: [], first_seen: null });\n    s.x_mentions++;\n    s.x_engagement += engagement;\n    s.x_buzz += decayed;\n    if (str(p.take)) s.takes.push(p.take.trim());\n    s.top_posts.push({ url: p.url, author: p.author_handle || null, posted_at: p.posted_at || null, likes, reposts,\n      views: num(p.views), take: str(p.take), excerpt: (p.text || '').replace(/\\s+/g, ' ').slice(0, 280) });\n    s.kinds.push(p.kind);\n    if (str(p.size_hints)) s.size_hints.push(p.size_hints);\n    if (str(p.license_hints)) s.license_hints.push(p.license_hints);\n    if (p.on_device) s.on_device_mentions++;\n    s.modality_hints.push(...arr(p.modality));\n    if (!s.first_seen || String(p.posted_at) < s.first_seen) s.first_seen = p.posted_at || null;\n  }\n}\nreport.joins.x_posts_attached = xMatched;\nreport.joins.x_new_announced_models = xAnnounced;\n\n// ---------------------------------------------------------------- 4. finish each entity\nconst MODALITY_TASK = { speech_to_text: 'automatic-speech-recognition', text_to_speech: 'text-to-speech',\n  voice_clone: 'text-to-speech', image_gen: 'text-to-image', video_gen: 'text-to-video', code: 'text-generation',\n  text: 'text-generation', vision: 'image-text-to-text', multimodal: 'any-to-any', embedding: 'feature-extraction',\n  audio: 'text-to-audio' };\n\nlet droppedLowSignal = 0;\nconst out = [];\nfor (const e of entities.values()) {\n  const hf = e.availability.huggingface;\n  const s = e.social;\n  if (s) {\n    s.top_posts.sort((a, b) => (b.likes + 3 * b.reposts) - (a.likes + 3 * a.reposts));\n    s.top_posts = s.top_posts.slice(0, 5);\n    s.takes = uniq(s.takes).slice(0, 5);\n    s.kinds = uniq(s.kinds);\n    s.size_hints = uniq(s.size_hints).slice(0, 3);\n    s.license_hints = uniq(s.license_hints).slice(0, 3);\n    s.modality_hints = uniq(s.modality_hints);\n    s.x_buzz = round(s.x_buzz, 1);\n    e.links.x_posts = s.top_posts.map(p => p.url);\n  }\n\n  // Quality gate: skip brand-new HF uploads nobody uses or talks about.\n  if (hf && !e._sources.has('x') && !e._sources.has('replicate')) {\n    const p = e.popularity;\n    const keep = hf.lists.includes('trending') || p.hf_downloads_30d >= 25 || p.hf_likes >= 2 ||\n      NOTABLE_AUTHORS.has((hf.author || '').toLowerCase());\n    if (!keep) { droppedLowSignal++; continue; }\n  }\n\n  // task\n  let task = e._task;\n  if (!task && s) {\n    const t = s.modality_hints.map(m => MODALITY_TASK[m]).find(Boolean);\n    if (t) { task = t; e._taskSource = 'x_post'; }\n  }\n  if (!task) { task = keywordTask(`${e.id} ${e.description || ''} ${s ? s.takes.join(' ') : ''}`); if (task) e._taskSource = 'keywords'; }\n  const t = TASKS[task] || null;\n  const tagTasks = uniq(e._tags.filter(x => TASKS[x]));\n  const voiceClone = /voice[-_ ]?clon|zero[-_ ]?shot[-_ ]?tts|speaker[-_ ]?adapt/i.test(`${e.id} ${e._tags.join(' ')} ${e.description || ''}`) ||\n    (s && s.modality_hints.includes('voice_clone'));\n  e.task = {\n    primary: task || null, label: t ? t[3] : null, group: t ? t[0] : null,\n    all: uniq([task, ...tagTasks]),\n    inputs: t ? t[1] : [], outputs: t ? t[2] : [],\n    capabilities: uniq([...(t ? t[4] : []), voiceClone ? 'voice cloning' : null,\n      e._tags.includes('code') || /coder|code/i.test(e.id) ? 'coding' : null,\n      e._tags.some(x => /reasoning|thinking/.test(x)) ? 'reasoning' : null,\n      e._tags.includes('tool-use') || e._tags.includes('function-calling') ? 'tool calling' : null]),\n    source: task ? e._taskSource : null,\n  };\n\n  if (!e._params && s && s.size_hints.length) {\n    const p = paramsFromName(s.size_hints.join(' ').replace(/\\s+/g, ''));\n    if (p) { e._params = p; e.size = { params: p, params_label: paramsLabel(p), params_active: null, params_source: 'x_post' }; }\n  }\n\n  // popularity score 0-100 (filled after percentile pass)\n  e.popularity = {\n    hf_downloads_30d: e.popularity.hf_downloads_30d || 0, hf_likes: e.popularity.hf_likes || 0,\n    hf_trending_score: e.popularity.hf_trending_score || 0, replicate_runs: e.popularity.replicate_runs || 0,\n    x_mentions: s ? s.x_mentions : 0, x_engagement: s ? s.x_engagement : 0, x_buzz: s ? s.x_buzz : 0,\n    _raw: log10(e.popularity.hf_downloads_30d) * 1.0 + log10(e.popularity.hf_likes) * 1.5 +\n      log10(e.popularity.hf_trending_score) * 2.0 + log10(e.popularity.replicate_runs) * 0.6 + log10(s ? s.x_buzz : 0) * 1.5,\n  };\n\n  if (!e.license) e.license = licenseInfo(null, null, null);\n  if (s && !e.license.id && s.license_hints.length) e.license.hint_from_x = s.license_hints[0];\n  out.push(e);\n}\n\n// Quantized / converted copies (unsloth GGUF, mlx-community 4bit, FP8...) inherit size, task and license from their base.\nconst outByKey = new Map(out.map(e => [e.id, e]));\nconst QUANT_REL = new Set(['quantized']);\nfor (const e of out) {\n  if (!e.lineage || !QUANT_REL.has(e.lineage.relation)) continue;\n  const base = e.lineage.base_models.map(b => outByKey.get(`hf:${b}`)).find(Boolean);\n  if (!base) continue;\n  // Repos sometimes mislabel distills / different sizes as \"quantized\". A real quantized copy has\n  // about the same parameter count (packed 4-bit storage can under-count, so compare loosely).\n  const exact = e.size && ['safetensors', 'gguf_header'].includes(e.size.params_source);\n  const nameP = paramsFromName(e.id);\n  const childP = nameP || (exact ? null : e._params);\n  if (base._params && childP && (childP / base._params < 0.8 || childP / base._params > 1.25)) { // same band as enrich.py family linking\n    e._notQuantOf = base.id;\n    continue;\n  }\n  e._base = base;\n  e.lineage.variant_of = base.id; // lets retrieval collapse copies under their original\n  if (base._params) {\n    e._params = base._params;\n    e.size = { ...(e.size || {}), params: base._params, params_label: paramsLabel(base._params), params_source: 'base_model' };\n  }\n  if (e.size && !e.size.params_active && base.size) e.size.params_active = base.size.params_active;\n  if (!e.task.primary && base.task.primary) e.task = { ...base.task, source: 'base_model' };\n  if (!e.license.id && base.license.id) e.license = { ...base.license, inherited_from: base.id };\n  if (!e.languages.length) e.languages = base.languages;\n}\n\nfunction hardwareFor(e) {\n  const params = e._params;\n  const task = e.task.primary;\n  const variants = {};\n  for (const q of e.quantizations) if (BPW[q]) variants[q] = BPW[q];\n  if (e._quantBits) variants[`${e._quantBits}bit`] = e._quantBits >= 16 ? e._quantBits : e._quantBits + 0.5;\n  const nativeBits = e.size && e.size.native_dtypes && e.size.native_dtypes.includes('F32') && e.size.native_dtypes.length === 1 ? 32\n    : e.formats.includes('pytorch') && !e.formats.includes('safetensors') ? 32 : 16;\n  if (!Object.keys(variants).length || (!e._quantBits && e.formats.some(f => ['safetensors', 'pytorch', 'diffusers', 'coreml', 'executorch', 'tflite', 'mlx'].includes(f))))\n    variants.native = nativeBits;\n  const estimates = Object.entries(variants)\n    .map(([v, bpw]) => ({ variant: v, bits_per_weight: bpw, est_ram_gb: estimateRamGb(params, bpw, task) }))\n    .filter(x => x.est_ram_gb != null)\n    .sort((a, b) => a.est_ram_gb - b.est_ram_gb);\n  const usable = estimates.filter(x => practical(x.variant));\n  if (!estimates.length && e.social && e.social.size_hints.length) {\n    // X-only models: \"under 300 MB\" / \"4.5 GB\" -> treat the stated download size as the weights.\n    const m = e.social.size_hints.join(' ').match(/(\\d+(?:\\.\\d+)?)\\s*(MB|GB)/i);\n    if (m) {\n      const gb = +m[1] / (/mb/i.test(m[2]) ? 1000 : 1);\n      estimates.push({ variant: 'as_announced', bits_per_weight: null, est_ram_gb: round(gb * OVERHEAD, 2) });\n    }\n  }\n  return { estimates, smallest: usable[0] || estimates[0] || null };\n}\nfunction tiersFor(ram, formats, saysOnDevice) {\n  if (ram == null) return [];\n  const t = [];\n  if (ram <= TIER_BUDGET_GB.phone && (formats.some(f => PHONE_FORMATS.has(f)) || saysOnDevice)) t.push('phone');\n  if (ram <= TIER_BUDGET_GB.laptop) t.push('laptop');\n  if (ram <= TIER_BUDGET_GB.gpu) t.push('gpu');\n  t.push('server');\n  return t;\n}\n\nfor (const e of out) {\n  const { estimates, smallest } = hardwareFor(e);\n  e._smallest = smallest;\n  e.hardware = {\n    est_min_ram_gb: smallest ? smallest.est_ram_gb : null,\n    smallest_variant: smallest ? smallest.variant : null,\n    variants: estimates.slice(0, 8),\n    // An X-only model counts as phone-ready only when posts say it runs on-device.\n    runs_on: tiersFor(smallest && smallest.est_ram_gb, e.formats,\n      !e.availability.huggingface && !!(e.social && e.social.on_device_mentions)),\n    on_device_ready: e.formats.filter(f => PHONE_FORMATS.has(f)),\n    best_option: null,\n    community_variants: [],\n    notes: [],\n  };\n}\n\n// Roll each base model's community variants up into it, so \"Qwen 27B\" shows it fits a laptop via someone's GGUF.\nlet rolledUp = 0;\nfor (const e of out) {\n  const base = e._base;\n  if (!base || !e._smallest) continue;\n  rolledUp++;\n  base.hardware.community_variants.push({\n    repo: e.availability.huggingface ? e.availability.huggingface.repo : e.id, formats: e.formats,\n    smallest_variant: e._smallest.variant, est_ram_gb: e._smallest.est_ram_gb,\n    runs_on: e.hardware.runs_on, downloads_30d: e.popularity.hf_downloads_30d,\n  });\n}\nreport.joins.quantized_variants_rolled_up = rolledUp;\n\nfor (const e of out) {\n  const s = e.social;\n  const hf = e.availability.huggingface;\n  const h = e.hardware;\n  h.community_variants.sort((a, b) => b.downloads_30d - a.downloads_30d);\n  h.community_variants = h.community_variants.slice(0, 8);\n  const own = e._smallest ? { repo: hf ? hf.repo : e.id, variant: e._smallest.variant, est_ram_gb: e._smallest.est_ram_gb, runs_on: h.runs_on } : null;\n  const options = [own, ...h.community_variants.map(v => ({ repo: v.repo, variant: v.smallest_variant, est_ram_gb: v.est_ram_gb, runs_on: v.runs_on }))]\n    .filter(Boolean);\n  // best = smallest RAM among options that are practical; prefer phone-capable ones\n  options.sort((a, b) => (b.runs_on.includes('phone') - a.runs_on.includes('phone')) || a.est_ram_gb - b.est_ram_gb);\n  h.best_option = options[0] || null;\n  h.runs_on_any_variant = uniq(options.flatMap(o => o.runs_on));\n  const phoneMaybe = h.est_min_ram_gb != null && h.est_min_ram_gb <= TIER_BUDGET_GB.phone && !h.runs_on_any_variant.includes('phone');\n  h.notes = uniq([\n    phoneMaybe ? 'small enough for a phone, but no phone-ready format (GGUF/MLX/CoreML/ONNX/ExecuTorch/TFLite) published yet' : null,\n    !e._params ? 'size unknown' : null,\n    e.status === 'api_only' ? 'hosted API only (Replicate); weights may not be downloadable' : null,\n    e.size && e.size.params_active ? `mixture-of-experts: ${paramsLabel(e.size.params_active)} active per token, but all weights must fit in memory` : null,\n    h.best_option && own && h.best_option.repo !== own.repo ? `smallest practical copy: ${h.best_option.repo} (${h.best_option.variant}, ~${h.best_option.est_ram_gb} GB)` : null,\n    s && s.on_device_mentions ? 'people on X mention running it on-device' : null,\n  ]);\n\n  // plain-English summary + the text that will later be embedded\n  const sizeTxt = e.size && e.size.params_label ? `${e.size.params_label} parameters` : 'unknown size';\n  const tiers = h.runs_on_any_variant;\n  const where = tiers.length ? `runs on: ${tiers.join(', ')}` : (e.status === 'api_only' ? 'hosted API' : 'hardware unknown');\n  const best = h.best_option;\n  e.summary = `${e.name}: ${e.task.label || 'unknown task'}, ${sizeTxt}, ${where}` +\n    (best ? ` (~${best.est_ram_gb} GB RAM with ${best.variant}${own && best.repo !== own.repo ? ` from ${best.repo}` : ''})` : '') + '.';\n  e.search_text = [\n    e.summary,\n    e.task.capabilities.length ? `Good for: ${e.task.capabilities.join(', ')}.` : '',\n    e.task.inputs.length ? `Input: ${e.task.inputs.join(' + ')}. Output: ${e.task.outputs.join(' + ')}.` : '',\n    e.formats.length ? `Formats: ${e.formats.join(', ')}${e.quantizations.length ? ` (${e.quantizations.slice(0, 6).join(', ')})` : ''}.` : '',\n    h.community_variants.length ? `Community copies: ${uniq(h.community_variants.flatMap(v => v.formats)).join(', ')}.` : '',\n    e.license.id ? `License: ${e.license.id} (commercial use: ${e.license.commercial_use}).` : '',\n    e.languages.length ? `Languages: ${e.languages.slice(0, 12).join(', ')}.` : '',\n    e.lineage && e.lineage.base_models.length ? `Based on ${e.lineage.base_models.join(', ')} (${e.lineage.relation || 'derived'}).` : '',\n    e.description ? `Description: ${e.description}` : '',\n    s && s.takes.length ? `What people say: ${s.takes.slice(0, 3).join(' ')}` : '',\n    hf ? `Tags: ${e._tags.filter(t => !/^(region|endpoints|license|base_model|arxiv|dataset):/.test(t)).slice(0, 20).join(', ')}.` : '',\n  ].filter(Boolean).join(' ');\n\n  // data quality\n  const missing = [];\n  if (!e.task.primary) missing.push('task');\n  if (!e._params) missing.push('params');\n  if (!e.license.id) missing.push('license');\n  if (!e.formats.length && e.status !== 'api_only') missing.push('formats');\n  if (!e.languages.length && ['text', 'speech-in', 'speech-out', 'multimodal'].includes(e.task.group)) missing.push('languages');\n  if (!e.description && !hf) missing.push('description');\n  const inferred = [];\n  if (e.task.source && !['pipeline_tag', 'card', 'tags'].includes(e.task.source)) inferred.push(`task:${e.task.source}`);\n  if (e.size && e.size.params_source && !['safetensors', 'gguf_header'].includes(e.size.params_source)) inferred.push(`params:${e.size.params_source}`);\n  if (e.license.inherited_from) inferred.push('license:base_model');\n  e.quality = {\n    completeness: round(1 - missing.length / 6, 2), missing, inferred,\n    needs_enrichment: missing.length > 0 || !!e._needsHf,\n    needs_hf_fetch: !!e._needsHf,\n  };\n  e.provenance = { sources: [...e._sources].sort(), fetched_at: FETCHED_AT, schema_version: SCHEMA_VERSION };\n}\nreport.dropped.low_signal_new_hf_uploads = droppedLowSignal;\n\n// popularity percentile -> 0-100\nconst sorted = out.map(e => e.popularity._raw).sort((a, b) => a - b);\nfor (const e of out) {\n  const r = e.popularity._raw;\n  let lo = 0, hi = sorted.length;\n  while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] < r) lo = mid + 1; else hi = mid; }\n  e.popularity.score = sorted.length > 1 ? Math.round((lo / (sorted.length - 1)) * 100) : 100;\n  delete e.popularity._raw;\n}\n\n// strip working fields, order keys\nconst ORDER = ['id', 'name', 'status', 'summary', 'task', 'size', 'hardware', 'formats', 'quantizations', 'license',\n  'languages', 'lineage', 'availability', 'popularity', 'social', 'links', 'dates', 'description', 'search_text',\n  'quality', 'provenance'];\nconst clean = out\n  .sort((a, b) => b.popularity.score - a.popularity.score)\n  .map(e => Object.fromEntries(ORDER.map(k => [k, e[k] === undefined ? null : e[k]])));\n\nreport.output = {\n  models: clean.length,\n  by_source_mix: clean.reduce((acc, e) => { const k = e.provenance.sources.join('+'); acc[k] = (acc[k] || 0) + 1; return acc; }, {}),\n  by_task_group: clean.reduce((acc, e) => { const k = e.task.group || 'unknown'; acc[k] = (acc[k] || 0) + 1; return acc; }, {}),\n  runs_on_phone: clean.filter(e => e.hardware.runs_on_any_variant.includes('phone')).length,\n  avg_completeness: round(clean.reduce((a, e) => a + e.quality.completeness, 0) / Math.max(1, clean.length), 2),\n};\n\nreturn [{ json: { models: clean, report } }];\n"
+      }
+    },
+    {
+      "id": "one-item-per-model",
+      "name": "One item per model",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        300
+      ],
+      "parameters": {
+        "fieldToSplitOut": "models",
+        "include": "noOtherFields",
+        "options": {}
+      }
+    },
+    {
+      "id": "models-to-json",
+      "name": "Models to JSON",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        300
+      ],
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "options": {
+          "format": true,
+          "fileName": "models_joined.json"
+        }
+      }
+    },
+    {
+      "id": "save-models_joined.json",
+      "name": "Save models_joined.json",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1860,
+        300
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "/data/joined/models_joined.json",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "run-report",
+      "name": "Run report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        520
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Run report\" - pass the join report on as its own item.\nreturn [{ json: $input.first().json.report }];\n"
+      }
+    },
+    {
+      "id": "report-to-json",
+      "name": "Report to JSON",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        520
+      ],
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "options": {
+          "format": true,
+          "fileName": "run_report.json"
+        }
+      }
+    },
+    {
+      "id": "save-run_report.json",
+      "name": "Save run_report.json",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1860,
+        520
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "/data/joined/run_report.json",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Run manually": {
+      "main": [
+        [
+          {
+            "node": "HF newest models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HF trending models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Replicate models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Replicate collections",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read X signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 6 hours": {
+      "main": [
+        [
+          {
+            "node": "HF newest models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HF trending models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Replicate models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Replicate collections",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read X signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HF newest models": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HF trending models": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Pick bases for variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick bases for variants": {
+      "main": [
+        [
+          {
+            "node": "HF quantized variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HF quantized variants": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Replicate models": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Replicate collections": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Read X signals": {
+      "main": [
+        [
+          {
+            "node": "Parse X file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse X file": {
+      "main": [
+        [
+          {
+            "node": "Wait for all sources",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Wait for all sources": {
+      "main": [
+        [
+          {
+            "node": "Clean & join",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & join": {
+      "main": [
+        [
+          {
+            "node": "One item per model",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Run report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per model": {
+      "main": [
+        [
+          {
+            "node": "Models to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Models to JSON": {
+      "main": [
+        [
+          {
+            "node": "Save models_joined.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run report": {
+      "main": [
+        [
+          {
+            "node": "Report to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report to JSON": {
+      "main": [
+        [
+          {
+            "node": "Save run_report.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {}
+}

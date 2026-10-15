@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.egg-info/
+data/raw/
+data/qdrant/
+data/catalog.db*
+logs/
+.pytest_cache/
+
+# Secrets and machine-local state (never commit)
+.env
+*.env
+!*.env.example
+n8n/.env
+n8n/n8n-data/
+n8n/backups/
+data/joined/
+data/catalog.db*
+*.sqlite
+*.sqlite-*
+.DS_Store

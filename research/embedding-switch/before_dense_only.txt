@@ -1,0 +1,10 @@
+Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice text-to-speech
+Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice text-to-speech
+FunAudioLLM/Fun-CosyVoice3-0.5B-2512 text-to-speech
+microsoft/VibeVoice-Realtime-0.5B text-to-speech
+ampixa/sanoTTS text-to-speech
+ResembleAI/chatterbox text-to-speech
+Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign text-to-speech
+nari-labs/Dia-1.6B text-to-speech
+microsoft/VibeVoice-1.5B text-to-speech
+Qwen/Qwen3-TTS-12Hz-1.7B-Base text-to-speech

@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Model Finder</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface-2: #f1efea;
+    --text: #1d1d1b;
+    --muted: #6a6862;
+    --border: #e2dfd8;
+    --accent: #3b5bdb;
+    --accent-text: #ffffff;
+    --focus: #3b5bdb;
+    --err-bg: #fdecec;
+    --err-text: #8f1d1d;
+    --err-border: #f3c2c2;
+
+    --phone-bg: #dff5e6;   --phone-fg: #14602f;
+    --laptop-bg: #dce9fb;  --laptop-fg: #17407f;
+    --gpu-bg: #f0e2fb;     --gpu-fg: #582a85;
+    --server-bg: #fde6d3;  --server-fg: #8a3d0a;
+    --unknown-bg: #ebe9e4; --unknown-fg: #5b5953;
+
+    --open-bg: #e3f4d8;    --open-fg: #2f5d12;
+    --closed-bg: #ebe9e4;  --closed-fg: #5b5953;
+    --chip-bg: #efede7;    --chip-fg: #3d3b36;
+    --code-bg: #f1efea;
+    --shadow: 0 1px 2px rgba(30, 28, 20, .05), 0 4px 14px rgba(30, 28, 20, .04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141516;
+      --surface: #1c1d1f;
+      --surface-2: #232527;
+      --text: #ececea;
+      --muted: #9a9a95;
+      --border: #2e3033;
+      --accent: #7d96ff;
+      --accent-text: #0f1226;
+      --focus: #9bb0ff;
+      --err-bg: #3a1a1a;
+      --err-text: #ffb4b4;
+      --err-border: #5c2a2a;
+
+      --phone-bg: #153a24;   --phone-fg: #8be0a8;
+      --laptop-bg: #15304f;  --laptop-fg: #9cc4f5;
+      --gpu-bg: #33204d;     --gpu-fg: #d3b2f5;
+      --server-bg: #4a2a12;  --server-fg: #f5bd8f;
+      --unknown-bg: #2c2e30; --unknown-fg: #a8a8a2;
+
+      --open-bg: #1f3a14;    --open-fg: #a5dc85;
+      --closed-bg: #2c2e30;  --closed-fg: #a8a8a2;
+      --chip-bg: #2a2c2f;    --chip-fg: #cfcfca;
+      --code-bg: #121314;
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 16px; flex: 1; }
+  header { padding: 40px 0 20px; }
+  h1 { margin: 0 0 4px; font-size: 1.9rem; letter-spacing: -.02em; }
+  .tag { margin: 0; color: var(--muted); }
+
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+
+  form { display: grid; gap: 10px; }
+  label.visually { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ask-box {
+    width: 100%; font: inherit; font-size: 1.15rem; padding: 16px 18px;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .ask-box::placeholder { color: var(--muted); }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .device-wrap { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .92rem; }
+  select {
+    font: inherit; padding: 10px 12px; border-radius: 10px;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  }
+  button { font: inherit; cursor: pointer; }
+  .ask-btn {
+    margin-left: auto; padding: 11px 26px; border: 0; border-radius: 10px; font-weight: 600;
+    background: var(--accent); color: var(--accent-text);
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+  }
+  .ask-btn[disabled] { opacity: .7; cursor: progress; }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin .8s linear infinite; display: none;
+  }
+  .loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.5s; } }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .examples span { color: var(--muted); font-size: .88rem; }
+  .example {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 6px 12px; border-radius: 999px; font-size: .9rem;
+  }
+  .example:hover { border-color: var(--accent); }
+
+  #results { margin-top: 24px; }
+  .understood {
+    background: var(--surface-2); border-radius: 12px; padding: 10px 14px; font-size: .95rem;
+    overflow-wrap: anywhere;
+  }
+  .understood b { font-weight: 600; }
+  .loosened { margin: 8px 2px 0; color: var(--muted); font-size: .88rem; }
+  .answer { margin: 14px 2px 0; }
+
+  .status {
+    margin-top: 16px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+  }
+  .status.error { background: var(--err-bg); color: var(--err-text); border-color: var(--err-border); }
+
+  ol.cards { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr; gap: 0 14px;
+  }
+  .rank {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--muted);
+    display: grid; place-items: center; font-weight: 600; font-size: .9rem; margin-top: 2px;
+  }
+  .body { min-width: 0; }
+  .card h2 { margin: 0; font-size: 1.1rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .card h2 a { color: var(--text); text-decoration-color: var(--border); text-underline-offset: 3px; }
+  .card h2 a:hover { color: var(--accent); text-decoration-color: currentColor; }
+  .task { color: var(--muted); font-size: .88rem; margin: 2px 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; align-items: center; }
+  .chip {
+    background: var(--chip-bg); color: var(--chip-fg); padding: 2px 9px; border-radius: 999px;
+    font-size: .8rem; white-space: nowrap;
+  }
+  .chip.dim { opacity: .6; border: 1px dashed var(--border); }
+  .chip.open { background: var(--open-bg); color: var(--open-fg); }
+  .chip.closed { background: var(--closed-bg); color: var(--closed-fg); }
+  .badge { padding: 2px 10px; border-radius: 6px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+  .badge.phone { background: var(--phone-bg); color: var(--phone-fg); }
+  .badge.laptop { background: var(--laptop-bg); color: var(--laptop-fg); }
+  .badge.gpu { background: var(--gpu-bg); color: var(--gpu-fg); }
+  .badge.server { background: var(--server-bg); color: var(--server-fg); }
+  .badge.unknown { background: var(--unknown-bg); color: var(--unknown-fg); }
+  .meta { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
+  .why { margin: 10px 0 0; }
+  .run {
+    margin-top: 10px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .run code {
+    flex: 1; min-width: 0; font: .84rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere; white-space: pre-wrap;
+  }
+  .copy {
+    flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 8px; padding: 4px 10px; font-size: .8rem;
+  }
+  .copy:hover { border-color: var(--accent); }
+  details.others { margin-top: 10px; font-size: .88rem; }
+  details.others summary { cursor: pointer; color: var(--muted); }
+  details.others ul { margin: 6px 0 0; padding-left: 18px; }
+  details.others li { margin: 3px 0; overflow-wrap: anywhere; }
+  details.others li span { color: var(--muted); }
+
+  footer { padding: 28px 16px 32px; text-align: center; color: var(--muted); font-size: .82rem; }
+
+  @media (max-width: 520px) {
+    header { padding-top: 28px; }
+    .card { grid-template-columns: 1fr; }
+    .rank { display: block; width: auto; height: auto; background: none; font-size: .8rem; margin: 0 0 2px; }
+    .rank::before { content: "#"; }
+    .ask-btn { width: 100%; justify-content: center; margin-left: 0; }
+    .device-wrap { width: 100%; }
+    .device-wrap select { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Model Finder</h1>
+    <p class="tag">Say what you want to build. Get open models that fit your device.</p>
+  </header>
+
+  <main>
+    <form id="form" autocomplete="off">
+      <label class="visually" for="q">What do you need a model for?</label>
+      <input id="q" class="ask-box" type="text" name="q" placeholder="e.g. I want to make a voice model on my phone" maxlength="500" required>
+      <div class="controls">
+        <div class="device-wrap">
+          <label for="device">Device</label>
+          <select id="device" name="device">
+            <option value="auto">Auto</option>
+            <option value="phone">Phone</option>
+            <option value="mac">Mac</option>
+            <option value="laptop">Laptop</option>
+            <option value="gpu">GPU box</option>
+            <option value="any">Any</option>
+          </select>
+        </div>
+        <button id="go" class="ask-btn" type="submit"><span class="spinner" aria-hidden="true"></span><span id="go-label">Ask</span></button>
+      </div>
+    </form>
+
+    <div class="examples" id="examples" aria-label="Example questions"><span>Try:</span></div>
+
+    <section id="results" aria-live="polite" aria-busy="false"></section>
+  </main>
+</div>
+<footer id="footer"></footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var DEMO = new URLSearchParams(location.search).get("demo") === "1";
+  var EXAMPLES = ["voice model on my phone", "small coding model for my MacBook", "image generation under 8GB VRAM"];
+
+  var TASK_LABELS = {
+    "text-to-speech": "Text to speech",
+    "automatic-speech-recognition": "Speech to text",
+    "text-generation": "Chat / text",
+    "text2text-generation": "Text rewriting",
+    "text-to-image": "Image generation",
+    "image-to-image": "Image editing",
+    "text-to-video": "Video generation",
+    "image-to-video": "Image to video",
+    "text-to-audio": "Audio / music generation",
+    "audio-to-audio": "Audio processing",
+    "audio-classification": "Audio classification",
+    "image-text-to-text": "Vision + chat",
+    "visual-question-answering": "Visual Q&A",
+    "image-classification": "Image classification",
+    "object-detection": "Object detection",
+    "image-segmentation": "Image segmentation",
+    "image-to-text": "Image captioning",
+    "depth-estimation": "Depth estimation",
+    "feature-extraction": "Embeddings",
+    "sentence-similarity": "Embeddings / similarity",
+    "translation": "Translation",
+    "summarization": "Summarization",
+    "question-answering": "Question answering",
+    "fill-mask": "Fill in the blank",
+    "token-classification": "Entity tagging",
+    "text-classification": "Text classification",
+    "zero-shot-classification": "Zero-shot classification",
+    "voice-activity-detection": "Voice activity detection",
+    "reinforcement-learning": "Reinforcement learning",
+    "robotics": "Robotics"
+  };
+  var DEVICE_LABELS = { phone: "phone", mac: "Mac", laptop: "laptop", gpu: "GPU box", any: "any device" };
+  var TIER_LABELS = { phone: "Fits a phone", laptop: "Fits a laptop", gpu: "Needs a GPU", server: "Server-class", unknown: "Size unknown" };
+  var ONDEVICE = ["coreml", "executorch", "tflite", "mlc"];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $("form"), qEl = $("q"), devEl = $("device"), goBtn = $("go"), goLabel = $("go-label");
+  var results = $("results");
+
+  /* ---------- tiny DOM helpers (textContent only, never innerHTML) ---------- */
+  function el(tag, opts, kids) {
+    var n = document.createElement(tag);
+    opts = opts || {};
+    if (opts.cls) n.className = opts.cls;
+    if (opts.text != null) n.textContent = String(opts.text);
+    if (opts.attrs) for (var k in opts.attrs) n.setAttribute(k, String(opts.attrs[k]));
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function safeUrl(u, fallbackId) {
+    try {
+      var p = new URL(String(u));
+      if (p.protocol === "https:" || p.protocol === "http:") return p.href;
+    } catch (e) {}
+    return "https://huggingface.co/" + encodeURI(String(fallbackId || ""));
+  }
+
+  /* ---------- formatting ---------- */
+  function taskLabel(t) {
+    if (!t) return "Unknown task";
+    if (TASK_LABELS[t]) return TASK_LABELS[t];
+    var s = String(t).replace(/-/g, " ");
+    return s;
+  }
+  function compact(n) {
+    n = Number(n) || 0;
+    if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace(/\.0$/, "") + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, "") + "k";
+    return String(n);
+  }
+  function gb(x) {
+    if (x == null || isNaN(x)) return null;
+    return "~" + (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10) + " GB";
+  }
+  function age(iso) {
+    var t = Date.parse(iso);
+    if (isNaN(t)) return null;
+    var days = Math.max(0, (Date.now() - t) / 86400000);
+    function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s") + " ago"; }
+    if (days < 1) return "today";
+    if (days < 30) return plural(Math.floor(days), "day");
+    if (days < 365) return plural(Math.floor(days / 30), "month");
+    return plural(Math.floor(days / 365), "year");
+  }
+  function niceDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return null;
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  /* ---------- "understood as" ---------- */
+  function understood(plan) {
+    var parts = [];
+    var tasks = (plan.tasks || []).map(function (t) { return taskLabel(t).toLowerCase(); });
+    if (tasks.length) parts.push(tasks.join(", "));
+    else if (plan.semantic_query) parts.push(plan.semantic_query);
+    var dev = plan.device;
+    if (dev && dev !== "auto") {
+      var d = dev === "any" ? "any device" : "fits a " + (DEVICE_LABELS[dev] || dev);
+      if (plan.memory_gb != null && dev !== "any") d += " (\u2264" + plan.memory_gb + " GB)";
+      parts.push(d);
+    } else if (plan.memory_gb != null) {
+      parts.push("\u2264" + plan.memory_gb + " GB memory");
+    }
+    var fm = plan.formats || [];
+    if (fm.length) {
+      var onDev = fm.some(function (f) { return ONDEVICE.indexOf(f) >= 0; });
+      parts.push(onDev ? "on-device formats" : fm.join("/") + " formats");
+    }
+    if (plan.license_open === true) parts.push("open licenses only");
+    if (plan.max_params_b != null) parts.push("up to " + plan.max_params_b + "B params");
+    if (plan.created_after_days != null) parts.push("from the last " + plan.created_after_days + " days");
+    if (plan.languages && plan.languages.length) parts.push(plan.languages.join(", "));
+    return parts;
+  }
+
+  /* ---------- rendering ---------- */
+  function setBusy(b) {
+    goBtn.disabled = b;
+    goBtn.classList.toggle("loading", b);
+    goLabel.textContent = b ? "Searching…" : "Ask";
+    results.setAttribute("aria-busy", b ? "true" : "false");
+  }
+  function showStatus(msg, isError) {
+    clear(results);
+    results.appendChild(el("div", { cls: "status" + (isError ? " error" : ""), text: msg, attrs: isError ? { role: "alert" } : {} }));
+  }
+
+  function copyButton(text) {
+    var b = el("button", { cls: "copy", text: "Copy", attrs: { type: "button", "aria-label": "Copy run instructions" } });
+    b.addEventListener("click", function () {
+      function done(ok) {
+        b.textContent = ok ? "Copied" : "Copy failed";
+        setTimeout(function () { b.textContent = "Copy"; }, 1500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+      } else done(fallbackCopy(text));
+    });
+    return b;
+  }
+  function fallbackCopy(text) {
+    try {
+      var ta = el("textarea", { attrs: { "aria-hidden": "true" } });
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function card(r, i) {
+    var tier = ["phone", "laptop", "gpu", "server"].indexOf(r.device_tier) >= 0 ? r.device_tier : "unknown";
+    var own = {};
+    (r.formats || []).forEach(function (f) { own[f] = true; });
+    var famOnly = {};
+    (r.derivatives || []).forEach(function (d) { (d.formats || []).forEach(function (f) { if (!own[f]) famOnly[f] = true; }); });
+
+    var chips = el("div", { cls: "chips" });
+    if (r.params_h) chips.appendChild(el("span", { cls: "chip", text: r.params_h + " params" }));
+    var mem = gb(r.ram_gb_min);
+    if (mem) chips.appendChild(el("span", { cls: "chip", text: mem + " memory", attrs: { title: "Estimated memory for the lightest practical variant" } }));
+    chips.appendChild(el("span", { cls: "badge " + tier, text: TIER_LABELS[tier] }));
+
+    var fmts = (r.family_formats && r.family_formats.length) ? r.family_formats : (r.formats || []);
+    var fchips = el("div", { cls: "chips", attrs: { "aria-label": "Formats" } });
+    fmts.forEach(function (f) {
+      var dim = !own[f] && famOnly[f];
+      fchips.appendChild(el("span", { cls: "chip" + (dim ? " dim" : ""), text: f, attrs: dim ? { title: "Available in a derived repo" } : {} }));
+    });
+    if (r.license) fchips.appendChild(el("span", { cls: "chip " + (r.open_license ? "open" : "closed"), text: r.license + (r.open_license ? " · open" : "") }));
+
+    var meta = [];
+    if (r.downloads != null) meta.push(compact(r.downloads) + " downloads");
+    if (r.likes != null) meta.push(compact(r.likes) + " likes");
+    var a = age(r.created_at);
+    if (a) meta.push("created " + a);
+
+    var body = el("div", { cls: "body" });
+    var h = el("h2", {}, [el("a", { text: r.id, attrs: { href: safeUrl(r.url, r.id), target: "_blank", rel: "noopener noreferrer" } })]);
+    body.appendChild(h);
+    body.appendChild(el("div", { cls: "task", text: taskLabel(r.task) }));
+    body.appendChild(chips);
+    if (fchips.childNodes.length) body.appendChild(fchips);
+    if (meta.length) body.appendChild(el("p", { cls: "meta", text: meta.join(" · ") }));
+    if (r.why) body.appendChild(el("p", { cls: "why", text: r.why }));
+    if (r.how_to_run) {
+      body.appendChild(el("div", { cls: "run" }, [el("code", { text: r.how_to_run }), copyButton(r.how_to_run)]));
+    }
+    var ders = r.derivatives || [];
+    if (ders.length) {
+      var ul = el("ul");
+      ders.forEach(function (d) {
+        var line = [];
+        if (d.formats && d.formats.length) line.push(d.formats.join(", "));
+        if (d.downloads != null) line.push(compact(d.downloads) + " downloads");
+        ul.appendChild(el("li", {}, [
+          el("a", { text: d.id, attrs: { href: "https://huggingface.co/" + encodeURI(String(d.id)), target: "_blank", rel: "noopener noreferrer" } }),
+          line.length ? el("span", { text: " — " + line.join(" · ") }) : null
+        ]));
+      });
+      body.appendChild(el("details", { cls: "others" }, [el("summary", { text: "Other builds (" + ders.length + ")" }), ul]));
+    }
+
+    return el("li", { cls: "card" }, [el("div", { cls: "rank", text: i + 1, attrs: { "aria-label": "Rank " + (i + 1) } }), body]);
+  }
+
+  function render(data) {
+    clear(results);
+    var plan = data.plan || {};
+    var parts = understood(plan);
+    if (parts.length) {
+      results.appendChild(el("div", { cls: "understood" }, [el("b", { text: "Looking for: " }), document.createTextNode(parts.join(" · "))]));
+    }
+    if (data.relaxed && data.relaxed.length) {
+      results.appendChild(el("p", { cls: "loosened", text: "Loosened: " + data.relaxed.join("; ") }));
+    }
+    if (data.answer) results.appendChild(el("p", { cls: "answer", text: data.answer }));
+
+    var list = data.results || [];
+    if (!list.length) {
+      results.appendChild(el("div", { cls: "status", text: "No models matched. Try different wording, or set the device to Any." }));
+      return;
+    }
+    var ol = el("ol", { cls: "cards" });
+    list.forEach(function (r, i) { ol.appendChild(card(r, i)); });
+    results.appendChild(ol);
+  }
+
+  /* ---------- data ---------- */
+  function errText(e) { return e && e.message ? e.message : String(e); }
+
+  function readError(res) {
+    return res.text().then(function (t) {
+      try {
+        var j = JSON.parse(t);
+        var d = j.error || j.detail || j.message;
+        if (d) return typeof d === "string" ? d : JSON.stringify(d);
+      } catch (e) {}
+      if (t && !/^\s*</.test(t)) return t.slice(0, 300);
+      return "Request failed (" + res.status + (res.statusText ? " " + res.statusText : "") + ")";
+    });
+  }
+
+  var seq = 0;
+  function ask(question) {
+    question = (question || "").trim();
+    if (!question) { qEl.focus(); return; }
+    var my = ++seq;
+    setBusy(true);
+    clear(results);
+    var p;
+    if (DEMO) {
+      p = fetch("sample_response.json").then(function (r) {
+        if (!r.ok) throw new Error("Could not load sample_response.json (" + r.status + ")");
+        return r.json();
+      }).then(function (d) {
+        return new Promise(function (ok) { setTimeout(function () { d.question = question; ok(d); }, 400); });
+      });
+    } else {
+      p = fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question, device: devEl.value, limit: 8 })
+      }).then(function (res) {
+        if (!res.ok) return readError(res).then(function (m) { throw new Error(m || ("Request failed (" + res.status + ")")); });
+        return res.json();
+      });
+    }
+    p.then(function (data) {
+      if (my !== seq) return;
+      if (data && data.error) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
+      render(data || {});
+    }).catch(function (e) {
+      if (my !== seq) return;
+      var m = errText(e);
+      if (/Failed to fetch|NetworkError|Load failed/i.test(m)) m = "Could not reach the server. Is it running? (" + m + ")";
+      showStatus(m, true);
+    }).then(function () {
+      if (my === seq) setBusy(false);
+    });
+  }
+
+  function loadStats() {
+    var foot = $("footer");
+    var p = DEMO
+      ? Promise.resolve({ models_indexed: 152000, last_update: new Date(Date.now() - 3600e3 * 14).toISOString(), last_seed: "2026-10-14T13:36:49Z", llm_backend: "demo" })
+      : fetch("/api/stats").then(function (r) { if (!r.ok) throw new Error(); return r.json(); });
+    p.then(function (s) {
+      var bits = [];
+      if (s.models_indexed != null) bits.push(Number(s.models_indexed).toLocaleString() + " models indexed");
+      var when = s.last_update || s.last_seed;
+      var tail = "data from Hugging Face";
+      if (when) { var nd = niceDate(when); var ag = age(when); tail += ", refreshed " + (ag && ag !== "today" ? ag : (nd ? nd : "recently")); }
+      bits.push(tail);
+      if (DEMO) bits.push("demo mode");
+      foot.textContent = bits.join(" · ");
+    }).catch(function () { foot.textContent = DEMO ? "" : "Stats unavailable"; });
+  }
+
+  /* ---------- wiring ---------- */
+  var ex = $("examples");
+  EXAMPLES.forEach(function (t) {
+    var b = el("button", { cls: "example", text: t, attrs: { type: "button" } });
+    b.addEventListener("click", function () { qEl.value = t; ask(t); });
+    ex.appendChild(b);
+  });
+  form.addEventListener("submit", function (e) { e.preventDefault(); if (!goBtn.disabled) ask(qEl.value); });
+
+  loadStats();
+})();
+</script>
+</body>
+</html>
