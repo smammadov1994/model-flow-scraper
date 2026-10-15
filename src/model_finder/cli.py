@@ -166,9 +166,17 @@ def cmd_ask(a):
 
 
 def cmd_serve(a):
+    import httpx
     import uvicorn
 
     _need_qdrant()
+    try:
+        if httpx.get(f"http://127.0.0.1:{a.port}/api/stats", timeout=3).status_code == 200:
+            print(f"Model Finder is already running at http://localhost:{a.port} — nothing to do.")
+            print("(To restart it: pkill -f 'model-finder serve', then run this again.)")
+            return
+    except httpx.HTTPError:
+        pass
     print(f"Open http://localhost:{a.port}")
     uvicorn.run("model_finder.web:app", host="127.0.0.1", port=a.port, log_level="warning")
 
