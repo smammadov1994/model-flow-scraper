@@ -65,4 +65,8 @@ STUDIO_PLANNER = os.environ.get("MF_STUDIO_PLANNER", "auto")
 STUDIO_MODEL = os.environ.get("MF_STUDIO_MODEL", "claude-opus-5-5")
 STUDIO_CLI_MODEL = os.environ.get("MF_STUDIO_CLI_MODEL", "opus")
 
+# Where exported n8n workflows reach Ollama. n8n in Docker (the usual setup) must use host.docker.internal;
+# a natively installed n8n can use http://localhost:11434.
+N8N_OLLAMA_URL = os.environ.get("MF_N8N_OLLAMA_URL", "http://host.docker.internal:11434")
+
 WEB_PORT = int(os.environ.get("MF_PORT", 8765))

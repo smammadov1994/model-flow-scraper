@@ -1,0 +1,66 @@
+{
+  "name": "Model Studio sample: voice assistant (design)",
+  "nodes": [
+    {
+      "id": "3f1c7a52-9b0e-4d6a-8e11-0a1b2c3d4e01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {}
+    },
+    {
+      "id": "3f1c7a52-9b0e-4d6a-8e11-0a1b2c3d4e02",
+      "name": "Prepare request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return [{ json: { model: 'openai/whisper-large-v3-turbo', task: 'automatic-speech-recognition' } }];"
+      }
+    },
+    {
+      "id": "3f1c7a52-9b0e-4d6a-8e11-0a1b2c3d4e03",
+      "name": "Call model server",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [520, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8765/api/example",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "3f1c7a52-9b0e-4d6a-8e11-0a1b2c3d4e04",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-40, -180],
+      "parameters": {
+        "content": "## Exported from Model Studio\nThree steps of the design, wired in order.",
+        "width": 640,
+        "height": 140,
+        "color": 4
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Prepare request", "type": "main", "index": 0 }]]
+    },
+    "Prepare request": {
+      "main": [[{ "node": "Call model server", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "instanceId": "model-studio-export" }
+}

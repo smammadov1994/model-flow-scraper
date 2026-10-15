@@ -51,7 +51,8 @@ def test_n8n_export_shape():
     types = {x["name"]: x["type"] for x in wf["nodes"]}
     llm = next(n for n in names if n.startswith("LLM"))
     assert types[llm] == "n8n-nodes-base.httpRequest"  # GGUF chat model -> local Ollama call
-    assert '"hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M"' in next(x for x in wf["nodes"] if x["name"] == llm)["parameters"]["jsonBody"]
+    body = next(x for x in wf["nodes"] if x["name"] == llm)["parameters"]["jsonBody"]
+    assert body.startswith("={{") and '"hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M"' in body  # one expression, evaluated by n8n
     trig = names[0]
     assert wf["connections"][trig]["main"][0][0]["node"] == "MIC"
     assert wf["connections"][llm]["main"][0][0]["node"].startswith("TTS")
@@ -66,3 +67,16 @@ def test_templates_are_valid_graphs():
         assert len(keys) == len(steps), key
         assert all(e["from"] in keys and e["to"] in keys for e in edges), key
         assert all(s["task"] for s in steps if s["type"] == "model"), key
+
+
+def test_n8n_validate_rejects_broken_files():
+    import pytest
+
+    good = {"nodes": [{"id": "1", "name": "A", "type": n8n.CODE[0], "typeVersion": 2, "position": [0, 0], "parameters": {}}],
+            "connections": {"A": {"main": [[{"node": "Missing", "type": "main", "index": 0}]]}}}
+    with pytest.raises(ValueError, match="unknown node"):
+        n8n.validate(good)
+    good["connections"] = {}
+    good["nodes"][0]["position"] = {"x": 0, "y": 0}
+    with pytest.raises(ValueError, match=r"\[x, y\]"):
+        n8n.validate(good)

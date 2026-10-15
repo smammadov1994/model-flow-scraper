@@ -212,6 +212,32 @@ repo's real dtype (never assumes fp32). Example: an 8B model at Q4_K_M ≈ 4.85 
 If you say how much memory you have, that replaces the default: "under 8GB VRAM" → 8 GB; "32GB MacBook"
 → 70% of 32; a phone gets half its RAM.
 
+## Model Studio (chat + canvas)
+
+Open **http://localhost:8765/studio/** while `model-finder serve` runs. Describe what you want to build
+("a voice assistant that runs on my iPhone") and it:
+
+1. plans the steps (listen → understand → speak) — with Claude when available, otherwise Jev picks one of eight
+   ready-made pipeline shapes;
+2. finds a model for every step with Model Finder, scored by Jev for fit, preferring the biggest model that fits
+   each step's fair share of the device memory for chat/image/video steps;
+3. checks the memory budget for all models loaded together and swaps the biggest for a smaller good alternative
+   if needed;
+4. lays the steps out as connected boxes. Click a box for why it was chosen, how to run it, and alternatives
+   ("Use this" swaps). Drag boxes to rearrange (saved).
+
+**Export to n8n** writes a workflow that imports into n8n 2.x: a manual trigger, one node per step (chat models
+available as GGUF become an HTTP call to Ollama — `ollama pull` the model first; other steps are Code-node stubs
+that name the model and how to run it), and a sticky note per model. n8n in Docker reaches Ollama on your Mac at
+`host.docker.internal` (default); for a native n8n set `MF_N8N_OLLAMA_URL=http://localhost:11434`.
+Tested: imports into n8n 2.6.4 and runs end to end (trigger → stubs → Ollama reply).
+
+Claude planning: set `ANTHROPIC_API_KEY` in `.env` (uses `claude-opus-5-5`), or log in the Claude Code CLI
+(`claude`, then `/login`) to use your subscription. `MF_STUDIO_PLANNER=anthropic|cli|templates` forces one.
+How n8n was studied (REA static analysis of its editor + its public docs, for the file format and UX ideas —
+no n8n code copied): `docs/n8n-study.md`. API contract: `docs/STUDIO.md`. Frontend source: `studio/`
+(`npm run build` writes to `src/model_finder/static/studio/`).
+
 ## Fast mode with TypeSafe Jev
 
 If `TYPESAFE_API_KEY` is set (put it in `.env`, see `.env.example`), two steps use TypeSafe's Jev, a "System One"

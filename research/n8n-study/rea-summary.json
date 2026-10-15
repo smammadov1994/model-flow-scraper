@@ -1,0 +1,168 @@
+{
+ "tool": "rea 6.5.0 (npm rea-agents@latest)",
+ "command": "npx -y rea-agents@latest analyze-javascript-application <dist> --format json --full-output --analysis-timeout-ms 600000 --max-heap-mb 4096",
+ "target": "n8nio/n8n:2.6.4 -> n8n-editor-ui/dist (built Vue app, 42 MB, 428 files in assets/)",
+ "duration_ms": "118457ms",
+ "raw_json_bytes": "~224 MB (kept out of the repo)",
+ "statistics": {
+  "relevant_files": 270,
+  "nested_asar_containers": 0,
+  "text_bytes_read": 33988740,
+  "invalid_utf8_files": 0,
+  "parsed_javascript_files": 269,
+  "visited_ast_nodes": 4752969,
+  "findings": 8562,
+  "modules": 0,
+  "parse_failures": 0
+ },
+ "app_graph": {
+  "nodes": 1043,
+  "edges": 4017,
+  "node_kinds": {
+   "unknown": 427,
+   "javascript-asset": 269,
+   "javascript-module": 182,
+   "endpoint": 160,
+   "electron-renderer": 1,
+   "storage": 2,
+   "artifact": 2
+  },
+  "edge_relations": {
+   "imports": 2823,
+   "contains": 754,
+   "calls": 344,
+   "exposes": 89,
+   "persists_to": 6,
+   "maps_to": 1
+  },
+  "coverage_status": "partial",
+  "limitations": 435
+ },
+ "semantic_graph": {
+  "nodes": 80297,
+  "relations": 126718,
+  "coverage_status": "partial",
+  "truncated": true
+ },
+ "electron_summary": {
+  "browser_windows": 0,
+  "explicit_web_preferences": 0,
+  "preload_entrypoints": 0,
+  "context_bridge_apis": 0,
+  "exposed_api_members": 0,
+  "ipc": {
+   "operations": 0,
+   "literal_channels": 0,
+   "dynamic_channel_operations": 0,
+   "renderer_transmissions": 0,
+   "renderer_listeners": 0,
+   "main_handlers": 0,
+   "paired_renderer_transmissions": 0,
+   "ambiguous_renderer_transmissions": 0,
+   "unpaired_literal_renderer_transmissions": 0
+  },
+  "sender_validation_observations": 1,
+  "utility_processes": 0,
+  "resolved_utility_entrypoints": 0,
+  "native_addon_bindings": 0,
+  "resolved_native_addon_bindings": 0
+ },
+ "largest_chunks": [
+  {
+   "path": "assets/typescript.worker-CEDv_BCD.js",
+   "bytes": 10632340
+  },
+  {
+   "path": "assets/worker-CdRpNxfL.js",
+   "bytes": 2906457
+  },
+  {
+   "path": "assets/constants-CBVTd5Nd.js",
+   "bytes": 2869686
+  },
+  {
+   "path": "assets/src-tk1pY1hY.js",
+   "bytes": 2173712
+  },
+  {
+   "path": "assets/DataTableDetailsView-BBfq56ZK.js",
+   "bytes": 1590853
+  },
+  {
+   "path": "assets/ParameterInputList-C0fys-7r.js",
+   "bytes": 1446848
+  },
+  {
+   "path": "assets/es-DMNyXBI9.js",
+   "bytes": 1190509
+  },
+  {
+   "path": "assets/RunData-BPIlBCBi.js",
+   "bytes": 1063371
+  },
+  {
+   "path": "assets/index-BohJmWc7.js",
+   "bytes": 1018891
+  },
+  {
+   "path": "assets/users.store-DSqwR_-X.js",
+   "bytes": 1000717
+  },
+  {
+   "path": "assets/NDVEmptyState-Be7-LK5A.js",
+   "bytes": 727421
+  },
+  {
+   "path": "assets/_MapCache-BTJ179Fo.js",
+   "bytes": 544989
+  },
+  {
+   "path": "assets/useCanvasMapping-BDRTplLi.js",
+   "bytes": 435314
+  },
+  {
+   "path": "assets/sanitize-html-DjneYy0u.js",
+   "bytes": 409652
+  },
+  {
+   "path": "assets/chart-D3YKT_RK.js",
+   "bytes": 348607
+  }
+ ],
+ "canvas_and_editor_chunks": [
+  "assets/CanvasRunWorkflowButton-MKiYMMDJ.js",
+  "assets/LogsPanel-DUsySZHc.js",
+  "assets/NDVEmptyState-Be7-LK5A.js",
+  "assets/NodeCreation-IMJq6VHo.js",
+  "assets/NodeCreator-CFejZYdt.js",
+  "assets/NodeDetailsView-BUVLyzJu.js",
+  "assets/NodeDetailsViewV2-DVr-8KDa.js",
+  "assets/NodeIcon-C2EjiGy9.js",
+  "assets/NodeSettings-C56cmrYj.js",
+  "assets/NodeView-yU8kI1zH.js",
+  "assets/ParameterInputList-C0fys-7r.js",
+  "assets/RunData-BPIlBCBi.js",
+  "assets/RunDataHtml-CSYDFYWy.js",
+  "assets/RunDataHtml-Cpr86z9U.js",
+  "assets/RunDataJson-BLBKADhZ.js",
+  "assets/RunDataJsonActions-C0ABSDEN.js",
+  "assets/RunDataParsedAiContent-Bdeoy1Tv.js",
+  "assets/RunDataParsedAiContent-DW2Gm8WV.js",
+  "assets/RunDataSearch-CnymJE4c.js",
+  "assets/RunDataTable-C8US7KYV.js",
+  "assets/TriggerPanel-AgxQpC2M.js",
+  "assets/WorkflowLayout-BsYrV72u.js",
+  "assets/WorkflowPreview-BuI-u6ta.js",
+  "assets/canvas.utils-BorVr1xo.js",
+  "assets/nodeCreator.store-CF2BbSzP.js",
+  "assets/nodeIcon-CDbi23rO.js",
+  "assets/nodeTransforms-CtQrTJu6.js",
+  "assets/useCanvasMapping-BDRTplLi.js",
+  "assets/useCanvasOperations-C-X-xTAP.js",
+  "assets/useRunWorkflow-CoPQg46-.js"
+ ],
+ "storage_use_found": [
+  "sessionStorage.getItem",
+  "sessionStorage.setItem"
+ ]
+}

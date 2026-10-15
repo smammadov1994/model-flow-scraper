@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import uuid
 
+from .. import config
 from ..summarize import task_label
 
 TRIGGER = ("n8n-nodes-base.manualTrigger", 1)
@@ -73,18 +74,23 @@ def export(pipeline: dict) -> dict:
         if _is_ollama_llm(n):
             m = n["model"]
             repo = m.get("variant_repo") or m["id"]
-            body = {"model": f"hf.co/{repo}:{m['variant']}", "prompt": "={{ $json.text || $json.input || '' }}", "stream": False}
+            # the whole body must be one expression (a parameter string starting with "=" is evaluated);
+            # {{ }} inside a plain JSON string would be sent literally
+            ollama_model = json.dumps(f"hf.co/{repo}:{m['variant']}")
+            body = f"={{{{ JSON.stringify({{ model: {ollama_model}, prompt: $json.text || $json.input || '', stream: false }}) }}}}"
             nodes.append({"id": _uid(pid, n["id"]), "name": name, "type": HTTP[0], "typeVersion": HTTP[1], "position": xy,
-                          "parameters": {"method": "POST", "url": "http://localhost:11434/api/generate", "sendBody": True,
-                                         "specifyBody": "json", "jsonBody": json.dumps(body, indent=2), "options": {}}})
+                          "parameters": {"method": "POST", "url": f"{config.N8N_OLLAMA_URL.rstrip('/')}/api/generate", "sendBody": True,
+                                         "contentType": "json", "specifyBody": "json", "jsonBody": body, "options": {}}})
         else:
             nodes.append({"id": _uid(pid, n["id"]), "name": name, "type": CODE[0], "typeVersion": CODE[1], "position": xy,
-                          "parameters": {"jsCode": _code_for(n)}})
+                          "parameters": {"mode": "runOnceForAllItems", "language": "javaScript", "jsCode": _code_for(n)}})
         if n.get("model"):
             m = n["model"]
+            pull = (f"\n\nBefore running: `ollama pull hf.co/{m.get('variant_repo') or m['id']}:{m['variant']}`"
+                    if _is_ollama_llm(n) else "")
             note = (f"## {task_label(n.get('task'))}\n**[{m['id']}]({m.get('url')})**\n\n"
                     + (f"~{m['ram_gb']} GB · " if m.get("ram_gb") else "") + f"{m.get('license') or 'license: see card'}\n\n"
-                    + (m.get("how_to_run") or ""))
+                    + (m.get("how_to_run") or "") + pull)
             nodes.append({"id": _uid(pid, n["id"], "note"), "name": _unique(f"Note: {n['title']}", used),
                           "type": STICKY[0], "typeVersion": STICKY[1], "position": [xy[0] - 20, xy[1] + 140],
                           "parameters": {"content": note, "width": 300, "height": 220, "color": 4}})
@@ -102,6 +108,43 @@ def export(pipeline: dict) -> dict:
         if e["source"] in names and e["target"] in names:
             link(names[e["source"]], names[e["target"]])
 
-    return {"name": pipeline.get("title") or "Model Studio pipeline", "nodes": nodes, "connections": connections,
-            "settings": {"executionOrder": "v1"}, "pinData": {}, "active": False,
-            "meta": {"generatedBy": "model-finder studio", "goal": pipeline.get("goal")}}
+    wf = {"name": pipeline.get("title") or "Model Studio pipeline", "nodes": nodes, "connections": connections,
+          "settings": {"executionOrder": "v1"}, "pinData": {}, "active": False,
+          "meta": {"generatedBy": "model-finder studio", "goal": pipeline.get("goal")}}
+    validate(wf)
+    return wf
+
+
+VALID_VERSIONS = {TRIGGER[0]: {1}, CODE[0]: {1, 2}, HTTP[0]: {1, 2, 3, 4, 4.1, 4.2, 4.3, 4.4}, STICKY[0]: {1}}
+
+
+def validate(wf: dict) -> None:
+    """n8n's importer accepts broken files silently (docs/n8n-study.md §5), so check our own output."""
+    names = [n["name"] for n in wf["nodes"]]
+    ids = [n["id"] for n in wf["nodes"]]
+    problems = []
+    if len(set(names)) != len(names):
+        problems.append("duplicate node names")
+    if len(set(ids)) != len(ids):
+        problems.append("duplicate node ids")
+    for n in wf["nodes"]:
+        if n["typeVersion"] not in VALID_VERSIONS.get(n["type"], set()):
+            problems.append(f"{n['name']}: unsupported {n['type']} v{n['typeVersion']}")
+        pos = n.get("position")
+        if not (isinstance(pos, list) and len(pos) == 2 and all(isinstance(v, (int, float)) for v in pos)):
+            problems.append(f"{n['name']}: position must be [x, y]")
+        if "credentials" in n:
+            problems.append(f"{n['name']}: must not carry credentials")
+    known = set(names)
+    for src, outs in wf["connections"].items():
+        if src not in known:
+            problems.append(f"connection from unknown node {src!r}")
+        for branch in outs.get("main", []):
+            for c in branch:
+                if c["node"] not in known:
+                    problems.append(f"connection to unknown node {c['node']!r}")
+    sticky = {n["name"] for n in wf["nodes"] if n["type"] == STICKY[0]}
+    if sticky & set(wf["connections"]):
+        problems.append("sticky notes cannot have connections")
+    if problems:
+        raise ValueError("invalid n8n export: " + "; ".join(problems))
