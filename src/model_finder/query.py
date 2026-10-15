@@ -157,7 +157,11 @@ def make_plan(question: str, device: str | None = None, use_llm: bool = True) ->
     p.created_after_days = int(cad) if isinstance(cad, (int, float)) and cad > 0 else rules["created_after_days"]
     p.languages = [l.lower()[:3] for l in (parsed.get("languages") or rules["languages"]) if isinstance(l, str)][:4]
     p.keywords = [k for k in (parsed.get("keywords") or []) if isinstance(k, str)][:5] or rules.get("keywords", [])
-    # device -> memory cap + hard formats (deterministic, never left to the LLM)
+    return apply_device(p)
+
+
+def apply_device(p: Plan) -> Plan:
+    """Device -> memory cap + hard formats (deterministic, never left to a model)."""
     if p.device in DEFAULT_CAP_GB:
         if p.memory_gb:
             share = 1.0 if p.device == "gpu" else (0.5 if p.device == "phone" else 0.7)
@@ -289,6 +293,9 @@ def _score(pt: models.ScoredPoint, top: float, p: Plan) -> float:
         penalty += 0.3  # CI fixtures and toy checkpoints, not real models
     if re.search(r"dflash|dspark|eagle-?3?\b|medusa|draft|(^|[-_])mtp([-_]|$)|speculat", rid.split("/")[-1]):
         penalty += 0.3  # speculative-decoding draft heads: helpers for a bigger model, not usable alone
+    if re.search(r"abliterat|uncensor|heretic|nsfw|jailbr|lewd|erotic", rid) and not re.search(
+            r"uncensor|abliterat|nsfw|unfiltered", p.question.lower()):
+        penalty += 0.2  # safety-removed community variants: only when asked for
     if r.get("task") in enrich.LLM_TASKS and (r.get("params") or 1e10) < 3e8:
         penalty += 0.15  # sub-300M "chat" models are rarely what anyone wants
     wants_code = any(k.lower().startswith(("code", "coding", "program")) for k in p.keywords) or bool(
@@ -453,15 +460,7 @@ def ask(question: str, device: str | None = None, limit: int = 8, use_llm: bool 
     p = make_plan(question, device, use_llm=use_llm)
     t1 = time.time()
     text = search_text(p)
-    relaxed: list[str] = []
-    ranked: list[tuple[float, dict]] = []
-    for i, (label, opts) in enumerate(LADDER):
-        pts = hybrid_search(text, build_filter(p, opts))
-        ranked = collapse(pts, p)
-        if i:
-            relaxed.append(label)
-        if len(ranked) >= MIN_RESULTS:
-            break
+    ranked, relaxed = search_ranked(p, text)
     t2 = time.time()
     # show the original model (root) with all its builds, not a random copy
     use_jev = use_llm and p.parser.startswith("jev")
@@ -496,6 +495,19 @@ def ask(question: str, device: str | None = None, limit: int = 8, use_llm: bool 
     timing["total"] = int((time.time() - t0) * 1000)
     return {"question": question, "plan": plan, "relaxed": relaxed, "answer": ans, "results": results,
             "timing_ms": timing}
+
+
+def search_ranked(p: Plan, text: str, min_results: int = MIN_RESULTS) -> tuple[list[tuple[float, dict]], list[str]]:
+    """Filtered hybrid search with step-by-step relaxing. Returns (ranked families, what was loosened)."""
+    relaxed: list[str] = []
+    ranked: list[tuple[float, dict]] = []
+    for i, (label, opts) in enumerate(LADDER):
+        ranked = collapse(hybrid_search(text, build_filter(p, opts)), p)
+        if i:
+            relaxed.append(label)
+        if len(ranked) >= min_results:
+            break
+    return ranked, relaxed
 
 
 def plan_text(p: Plan) -> str:

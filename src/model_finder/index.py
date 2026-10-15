@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 import time
 import uuid
 from functools import lru_cache
@@ -106,8 +107,12 @@ def embed(texts: list[str]) -> list[list[float]]:
     return [out[k] for k in keys]
 
 
+_query_lock = threading.Lock()
+
+
 def embed_query(text: str) -> list[float]:
-    return embedder().query(text)
+    with _query_lock:  # one GPU model shared by threads (web server, Studio's parallel step searches)
+        return embedder().query(text)
 
 
 def ensure_collection(recreate: bool = False) -> None:

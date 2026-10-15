@@ -60,4 +60,9 @@ JEV_MODEL = os.environ.get("MF_JEV_MODEL", "jev-latest")
 JEV_TIMEOUT = float(os.environ.get("MF_JEV_TIMEOUT", 10))
 RERANK_N = int(os.environ.get("MF_RERANK_N", 30))  # shortlist size Jev re-scores (one parallel question each)
 
+# Model Studio planner: "auto" = Anthropic API if a key is set, else the Claude Code CLI if logged in, else templates.
+STUDIO_PLANNER = os.environ.get("MF_STUDIO_PLANNER", "auto")
+STUDIO_MODEL = os.environ.get("MF_STUDIO_MODEL", "claude-opus-5-5")
+STUDIO_CLI_MODEL = os.environ.get("MF_STUDIO_CLI_MODEL", "opus")
+
 WEB_PORT = int(os.environ.get("MF_PORT", 8765))

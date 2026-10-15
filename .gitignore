@@ -19,3 +19,7 @@ data/catalog.db*
 *.sqlite
 *.sqlite-*
 .DS_Store
+
+# frontend
+node_modules/
+studio/node_modules/
