@@ -36,12 +36,33 @@ def weight_bytes(siblings: list[dict]) -> tuple[int, str | None]:
         dedup = [(f, b) for f, b in group
                  if not (re.search(r"[._-](fp16|f16|bf16|half|int8|q\d\w*|quantized)\b", f.lower())
                          and re.sub(r"[._-](fp16|f16|bf16|half|int8|q\d\w*|quantized)", "", f) in names)]
+        dedup = dedup or group
         if ext == ".gguf":  # many quants of the same model: the smallest whole file is closest to one copy
             dedup = [min(dedup, key=lambda x: x[1])]
         if ext == ".onnx":
             dedup = [max(dedup, key=lambda x: x[1])]
-        return sum(b for _, b in dedup), dedup[0][0]
+        return _one_copy(dedup, names_all=[s["rfilename"] for s in siblings]), dedup[0][0]
     return 0, None
+
+
+_SHARD = re.compile(r"-\d{5}-of-\d{5}\.|\.part\d+|_part\d+", re.I)
+
+
+def _one_copy(files: list[tuple[str, int]], names_all: list[str]) -> int:
+    """Sum shards and diffusers components; otherwise several top-level files are usually *alternative*
+    models bundled together (ComfyUI repackages, fp8 + bf16 checkpoints), so take the largest one."""
+    if len(files) == 1:
+        return files[0][1]
+    if any(n.endswith("model_index.json") for n in names_all):  # diffusers: one file per component folder
+        best: dict[str, int] = {}
+        for f, b in files:
+            d = f.rsplit("/", 1)[0] if "/" in f else ""
+            best[d] = max(best.get(d, 0), b)
+        return sum(best.values())
+    shards = [(f, b) for f, b in files if _SHARD.search(f)]
+    if shards:
+        return sum(b for _, b in shards)
+    return max(b for _, b in files)
 
 
 def _fetch(c: httpx.Client, mid: str) -> tuple[str, dict | None]:
@@ -52,7 +73,11 @@ def _fetch(c: httpx.Client, mid: str) -> tuple[str, dict | None]:
             continue
         if r.status_code != 200:
             return mid, None
-        total, sample = weight_bytes(r.json().get("siblings") or [])
+        try:
+            total, sample = weight_bytes(r.json().get("siblings") or [])
+        except Exception as e:  # one odd repo must not stop the run
+            print(f"  ! {mid}: {e!r}")
+            return mid, None
         return mid, {"total_bytes": total, "sample_file": sample}
     return mid, None
 

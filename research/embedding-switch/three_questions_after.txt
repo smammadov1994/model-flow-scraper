@@ -1,0 +1,42 @@
+
+== I am looking to make a voice model on my phone  (search text: 'text-to-speech model', loosened: nothing)
+  1. hexgrad/Kokoro-82M | 82M | ~0.06 GB as q4 | build: onnx-community/Kokoro-82M-v1.0-ONNX | 10,546,822 dl/mo
+     run: Use the ONNX build onnx-community/Kokoro-82M-v1.0-ONNX with ONNX Runtime Mobile or sherpa-onnx (Android/iOS); use the q4 variant to save memory.
+  2. Qwen/Qwen3-TTS-12Hz-1.7B-Base | 1.9B | ~1.26 GB as Q4_K_M | build: ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF | 3,162,646 dl/mo
+     run: Download the Q4_K_M .gguf from ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).
+  3. nari-labs/Dia-1.6B | 1.6B | ~1.03 GB as IQ4_XS | build: calcuis/dia-gguf | 23,729 dl/mo
+     run: Download the IQ4_XS .gguf from calcuis/dia-gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).
+  4. Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice | 1.9B | ~1.15 GB as 4bit | build: mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit | 2,201,702 dl/mo
+     run: Runs in iOS apps built on mlx-swift (e.g. the MLX examples).
+  5. openbmb/VoxCPM2 | 2.3B | ~1.61 GB as 4bit | build: mlx-community/VoxCPM2-4bit | 709,838 dl/mo
+     run: Runs in iOS apps built on mlx-swift (e.g. the MLX examples).
+  6. pnnbao-ump/VieNeu-TTS-v3-Turbo | 131M | ~0.17 GB as Q8_0 | build: pnnbao-ump/VieNeu-TTS-v3-Turbo | 1,146,698 dl/mo
+     run: Download the Q8_0 .gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).
+
+== small coding model for my MacBook  (search text: 'coding model code', loosened: nothing)
+  1. Qwen/Qwen2.5-Coder-14B-Instruct | 15B | ~11.4 GB as Q4_K_M | build: Qwen/Qwen2.5-Coder-14B-Instruct-GGUF | 1,755,766 dl/mo
+     run: `ollama run hf.co/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF:Q4_K_M` or open it in LM Studio / llama.cpp.
+  2. zhuyaoyu/CodeV-R1-RL-Qwen-7B | 7.6B | ~6.01 GB as Q4_K_M | build: mradermacher/CodeV-R1-Qwen-7B-i1-GGUF | 786 dl/mo
+     run: `ollama run hf.co/mradermacher/CodeV-R1-Qwen-7B-i1-GGUF:Q4_K_M` or open it in LM Studio / llama.cpp.
+  3. Qwen/Qwen2.5-Coder-7B-Instruct | 7.6B | ~6.01 GB as Q4_K_M | build: Qwen/Qwen2.5-Coder-7B-Instruct-GGUF | 1,589,786 dl/mo
+     run: `ollama run hf.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M` or open it in LM Studio / llama.cpp.
+  4. emperorofrome/Gmcoder | 9.4B | ~7.37 GB as Q4_K_M | build: emperorofrome/Gmcoder | 3,862 dl/mo
+     run: `ollama run hf.co/emperorofrome/Gmcoder:Q4_K_M` or open it in LM Studio / llama.cpp.
+  5. nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16 | 4B | ~3.23 GB as Q4_K_M | build: lmstudio-community/NVIDIA-Nemotron-3-Nano-4B-GGUF | 1,565,119 dl/mo
+     run: `ollama run hf.co/lmstudio-community/NVIDIA-Nemotron-3-Nano-4B-GGUF:Q4_K_M` or open it in LM Studio / llama.cpp.
+  6. mradermacher/Andromeda-8B-Coder-i1-GGUF | 8B | ~6.32 GB as Q4_K_M | build: mradermacher/Andromeda-8B-Coder-i1-GGUF | 2,438 dl/mo
+     run: `ollama run hf.co/mradermacher/Andromeda-8B-Coder-i1-GGUF:Q4_K_M` or open it in LM Studio / llama.cpp.
+
+== image generation under 8GB VRAM  (search text: 'image generation model ', loosened: nothing)
+  1. stabilityai/stable-diffusion-xl-base-1.0 | 2.6B | ~2.76 GB as Q4_K_S | build: Old-Fisherman/SDXL_Finetune_GGUF_Files | 4,295,405 dl/mo
+     run: Download the Q4_K_S .gguf from Old-Fisherman/SDXL_Finetune_GGUF_Files and load it in ComfyUI (ComfyUI-GGUF node) or stable-diffusion.cpp — GGUF image/video models don't run in llama.cpp or Ollama.
+  2. stable-diffusion-v1-5/stable-diffusion-v1-5 | 860M | ~1.73 GB as Q4_0 | build: second-state/stable-diffusion-v1-5-GGUF | 1,647,825 dl/mo
+     run: Download the Q4_0 .gguf from second-state/stable-diffusion-v1-5-GGUF and load it in ComfyUI (ComfyUI-GGUF node) or stable-diffusion.cpp — GGUF image/video models don't run in llama.cpp or Ollama.
+  3. Tongyi-MAI/Z-Image-Turbo | 6.2B | ~5.48 GB as Q4_K_M | build: unsloth/Z-Image-Turbo-GGUF | 630,477 dl/mo
+     run: Download the Q4_K_M .gguf from unsloth/Z-Image-Turbo-GGUF and load it in ComfyUI (ComfyUI-GGUF node) or stable-diffusion.cpp — GGUF image/video models don't run in llama.cpp or Ollama.
+  4. black-forest-labs/FLUX.1-dev | 12B | ~7.25 GB as Q3_K_S | build: city96/FLUX.1-dev-gguf | 643,822 dl/mo
+     run: Download the Q3_K_S .gguf from city96/FLUX.1-dev-gguf and load it in ComfyUI (ComfyUI-GGUF node) or stable-diffusion.cpp — GGUF image/video models don't run in llama.cpp or Ollama.
+  5. circlestone-labs/Anima | 2.1B | ~2.52 GB as Q4_K_M | build: Abiray/Anima-base-v1.0-GGUF | 1,320,869 dl/mo
+     run: Download the Q4_K_M .gguf from Abiray/Anima-base-v1.0-GGUF and load it in ComfyUI (ComfyUI-GGUF node) or stable-diffusion.cpp — GGUF image/video models don't run in llama.cpp or Ollama.
+  6. Lykon/dreamshaper-7 | 860M | ~5.13 GB as native | build: Lykon/dreamshaper-7 | 871,297 dl/mo
+     run: `pip install diffusers` and load with `DiffusionPipeline.from_pretrained('Lykon/dreamshaper-7', torch_dtype=torch.float16)`.

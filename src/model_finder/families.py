@@ -19,6 +19,7 @@ CONVERTER_ORGS = {
     "litert-community", "executorch-community", "coreml-community", "apple", "intel", "openvino", "cortexso",
     "ggerganov", "devquasar", "tensorblock", "noctrex", "lmstudio-ai", "mlc-ai", "pytorch", "redhatai",
     "neuralmagic", "nm-testing", "turboderp", "unsloth-community", "bnb-community", "csukuangfj", "k2-fsa",
+    "comfy-org", "kijai", "city96", "gguf-org", "calcuis",
 }
 DEPLOY_FORMATS = {"gguf", "ggml", "onnx", "mlx", "coreml", "executorch", "tflite", "mlc", "openvino", "awq", "gptq", "exl2", "bnb"}
 _SUFFIX = re.compile(
@@ -60,7 +61,13 @@ def _load(con) -> list[dict]:
 
 def _is_conversion(m: dict) -> bool:
     fm = set(m["formats"])
-    return (m["author"] or "").lower() in CONVERTER_ORGS or (bool(fm & DEPLOY_FORMATS) and "safetensors" not in fm)
+    if (m["author"] or "").lower() in CONVERTER_ORGS:
+        return True
+    if not fm & DEPLOY_FORMATS:
+        return False
+    name = m["id"].split("/")[-1].lower()
+    # MLX repos ship safetensors too; a format suffix in the name ("-mlx", "-GGUF", "-onnx", "-4bit") means a copy
+    return "safetensors" not in fm or "mlx" in fm or stem(m["id"]) != name
 
 
 def _same_size(a: dict, b: dict) -> bool:
@@ -109,7 +116,8 @@ def compute(models: list[dict]) -> dict[str, dict]:
     fields: dict[str, dict] = {}
     for m in models:
         mid = m["id"]
-        ders = sorted(members.get(mid, []), key=lambda d: -(d["downloads"] or 0))
+        # copies whose own size estimate disagrees with the original are mislabeled; don't let them set the minimum
+        ders = sorted((d for d in members.get(mid, []) if _same_size(d, m)), key=lambda d: -(d["downloads"] or 0))
         group = [m] + ders
         ff = sorted({f for g in group for f in g["formats"]})
         rams = [g["ram_gb_min"] for g in group if g["ram_gb_min"]]

@@ -95,3 +95,13 @@ def test_card_extraction_needs_evidence():
         "task": None, "params_b": None, "license": None}
     assert verified({"task": "feature-extraction", "params_b": 0.11}, card + " It has 110M parameters.") == {
         "task": "feature-extraction", "params_b": 0.11}
+
+
+def test_search_text_drops_hardware_words():
+    p = plan("small coding model for my MacBook")
+    assert "macbook" not in query.search_text(p).lower() and "small" not in query.search_text(p).lower()
+    assert "coding" in query.search_text(p).lower()
+    p = plan("image generation under 8GB VRAM")
+    assert query.search_text(p).lower().startswith("image generation") and "8gb" not in query.search_text(p).lower()
+    p = plan("I am looking to make a voice model on my phone")
+    assert "phone" not in query.search_text(p).lower() and "voice model" in query.search_text(p).lower()

@@ -1,0 +1,753 @@
+{
+  "question": "I am looking to make a voice model on my phone",
+  "plan": {
+    "question": "I am looking to make a voice model on my phone",
+    "semantic_query": "text-to-speech model for mobile devices",
+    "tasks": [
+      "text-to-speech"
+    ],
+    "device": "phone",
+    "memory_gb": null,
+    "ram_cap_gb": 4.0,
+    "formats": [
+      "gguf",
+      "ggml",
+      "onnx",
+      "coreml",
+      "executorch",
+      "tflite",
+      "mlx",
+      "mlc"
+    ],
+    "license_open": null,
+    "max_params_b": null,
+    "min_params_b": null,
+    "created_after_days": null,
+    "languages": [],
+    "keywords": [],
+    "parser": "ollama:qwen3:4b",
+    "search_text": "text-to-speech model"
+  },
+  "relaxed": [],
+  "answer": null,
+  "results": [
+    {
+      "id": "hexgrad/Kokoro-82M",
+      "url": "https://huggingface.co/hexgrad/Kokoro-82M",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 82000000,
+      "params_h": "82M",
+      "ram_gb_min": 0.06,
+      "device_tier": "phone",
+      "best_variant": "q4",
+      "best_variant_repo": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "best_variant_format": "onnx",
+      "formats": [
+        "pytorch"
+      ],
+      "family_formats": [
+        "coreml",
+        "executorch",
+        "gguf",
+        "mlx",
+        "onnx",
+        "openvino",
+        "pytorch",
+        "safetensors",
+        "tflite"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 10546822,
+      "likes": 7249,
+      "created_at": "2024-12-26T00:20:08Z",
+      "why": "Text to speech, 82M parameters, ~0.06 GB of memory as q4 \u2014 fits a phone (budget ~4 GB). Ready-made build: onnx-community/Kokoro-82M-v1.0-ONNX. License apache-2.0 (commercial use OK). 10.5M downloads last month, 7K likes, released 2024-12-26.",
+      "how_to_run": "Use the ONNX build onnx-community/Kokoro-82M-v1.0-ONNX with ONNX Runtime Mobile or sherpa-onnx (Android/iOS); use the q4 variant to save memory.",
+      "derivatives": [
+        {
+          "id": "onnx-community/Kokoro-82M-v1.0-ONNX",
+          "formats": [
+            "onnx",
+            "pytorch"
+          ],
+          "downloads": 690469
+        },
+        {
+          "id": "software-mansion/react-native-executorch-kokoro",
+          "formats": [
+            "executorch",
+            "pytorch"
+          ],
+          "downloads": 97358
+        },
+        {
+          "id": "mlx-community/Kokoro-82M-bf16",
+          "formats": [
+            "mlx",
+            "pytorch",
+            "safetensors"
+          ],
+          "downloads": 73151
+        },
+        {
+          "id": "onnx-community/Kokoro-82M-ONNX",
+          "formats": [
+            "onnx",
+            "pytorch"
+          ],
+          "downloads": 62818
+        },
+        {
+          "id": "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped",
+          "formats": [
+            "onnx",
+            "pytorch"
+          ],
+          "downloads": 13793
+        },
+        {
+          "id": "FluidInference/kokoro-82m-coreml",
+          "formats": [
+            "coreml",
+            "pytorch"
+          ],
+          "downloads": 5028
+        }
+      ],
+      "score": 0.8865
+    },
+    {
+      "id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 1928677440,
+      "params_h": "1.9B",
+      "ram_gb_min": 1.26,
+      "device_tier": "phone",
+      "best_variant": "Q4_K_M",
+      "best_variant_repo": "ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF",
+      "best_variant_format": "gguf",
+      "formats": [
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "onnx",
+        "openvino",
+        "pytorch",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 3162646,
+      "likes": 560,
+      "created_at": "2026-01-21T08:57:11Z",
+      "why": "Text to speech, 1.9B parameters, ~1.26 GB of memory as Q4_K_M \u2014 fits a phone (budget ~4 GB). Ready-made build: ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF. License apache-2.0 (commercial use OK). 3.2M downloads last month, 560 likes, released 2026-01-21.",
+      "how_to_run": "Download the Q4_K_M .gguf from ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 30889
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 18229
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 8140
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 2819
+        },
+        {
+          "id": "cstr/qwen3-tts-1.7b-base-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 2319
+        },
+        {
+          "id": "mradermacher/Qwen3-TTS-12Hz-1.7B-Base-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 887
+        }
+      ],
+      "score": 0.752
+    },
+    {
+      "id": "nari-labs/Dia-1.6B",
+      "url": "https://huggingface.co/nari-labs/Dia-1.6B",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 1611160576,
+      "params_h": "1.6B",
+      "ram_gb_min": 1.03,
+      "device_tier": "phone",
+      "best_variant": "IQ4_XS",
+      "best_variant_repo": "calcuis/dia-gguf",
+      "best_variant_format": "gguf",
+      "formats": [
+        "pytorch",
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "pytorch",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 23729,
+      "likes": 2930,
+      "created_at": "2025-04-20T05:36:20Z",
+      "why": "Text to speech, 1.6B parameters, ~1.03 GB of memory as IQ4_XS \u2014 fits a phone (budget ~4 GB). Ready-made build: calcuis/dia-gguf. License apache-2.0 (commercial use OK). 24K downloads last month, 3K likes, released 2025-04-20.",
+      "how_to_run": "Download the IQ4_XS .gguf from calcuis/dia-gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "cstr/dia-1.6b-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 1478
+        },
+        {
+          "id": "calcuis/dia-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 407
+        },
+        {
+          "id": "mmwillet2/Dia_GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 160
+        },
+        {
+          "id": "mlx-community/Dia-1.6B-4bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 99
+        },
+        {
+          "id": "mlx-community/Dia-1.6B-6bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 65
+        }
+      ],
+      "score": 0.7149
+    },
+    {
+      "id": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+      "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 1916676352,
+      "params_h": "1.9B",
+      "ram_gb_min": 1.15,
+      "device_tier": "phone",
+      "best_variant": "4bit",
+      "best_variant_repo": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit",
+      "best_variant_format": "mlx",
+      "formats": [
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "onnx",
+        "openvino",
+        "pytorch",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 2201702,
+      "likes": 2121,
+      "created_at": "2026-01-21T08:56:49Z",
+      "why": "Text to speech, 1.9B parameters, ~1.15 GB of memory as 4bit \u2014 fits a phone (budget ~4 GB). Ready-made build: mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit. License apache-2.0 (commercial use OK). 2.2M downloads last month, 2K likes, released 2026-01-21.",
+      "how_to_run": "Runs in iOS apps built on mlx-swift (e.g. the MLX examples).",
+      "derivatives": [
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 8093
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 4155
+        },
+        {
+          "id": "cstr/qwen3-tts-1.7b-customvoice-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 3917
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 2913
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-6bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 1725
+        },
+        {
+          "id": "sakasegawa/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 493
+        }
+      ],
+      "score": 0.6908
+    },
+    {
+      "id": "openbmb/VoxCPM2",
+      "url": "https://huggingface.co/openbmb/VoxCPM2",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 2290004544,
+      "params_h": "2.3B",
+      "ram_gb_min": 1.61,
+      "device_tier": "phone",
+      "best_variant": "4bit",
+      "best_variant_repo": "mlx-community/VoxCPM2-4bit",
+      "best_variant_format": "mlx",
+      "formats": [
+        "pytorch",
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "pytorch",
+        "safetensors",
+        "tflite"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 709838,
+      "likes": 1684,
+      "created_at": "2026-04-03T05:25:50Z",
+      "why": "Text to speech, 2.3B parameters, ~1.61 GB of memory as 4bit \u2014 fits a phone (budget ~4 GB). Ready-made build: mlx-community/VoxCPM2-4bit. License apache-2.0 (commercial use OK). 710K downloads last month, 2K likes, released 2026-04-03.",
+      "how_to_run": "Runs in iOS apps built on mlx-swift (e.g. the MLX examples).",
+      "derivatives": [
+        {
+          "id": "cstr/voxcpm2-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 3345
+        },
+        {
+          "id": "mlx-community/VoxCPM2-8bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 3289
+        },
+        {
+          "id": "mlx-community/VoxCPM2-bf16",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 2066
+        },
+        {
+          "id": "mlx-community/VoxCPM2-4bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 911
+        },
+        {
+          "id": "soniqo/VoxCPM2-LiteRT",
+          "formats": [
+            "tflite"
+          ],
+          "downloads": 678
+        },
+        {
+          "id": "grruwi/VoxCPM2-audiocpp-prebuilt",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 569
+        }
+      ],
+      "score": 0.6564
+    },
+    {
+      "id": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "url": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 130907520,
+      "params_h": "131M",
+      "ram_gb_min": 0.17,
+      "device_tier": "phone",
+      "best_variant": "Q8_0",
+      "best_variant_repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "best_variant_format": "gguf",
+      "formats": [
+        "gguf",
+        "onnx",
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "onnx",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 1146698,
+      "likes": 78,
+      "created_at": "2026-06-05T06:45:01Z",
+      "why": "Text to speech, 131M parameters, ~0.17 GB of memory as Q8_0 \u2014 fits a phone (budget ~4 GB). License apache-2.0 (commercial use OK). 1.1M downloads last month, 78 likes, released 2026-06-05.",
+      "how_to_run": "Download the Q8_0 .gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "phuocnguyen90/VieNeu-TTS-v3-Turbo-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 29330
+        }
+      ],
+      "score": 0.5829
+    },
+    {
+      "id": "neuphonic/neutts-air",
+      "url": "https://huggingface.co/neuphonic/neutts-air",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 747930496,
+      "params_h": "748M",
+      "ram_gb_min": 0.51,
+      "device_tier": "phone",
+      "best_variant": "Q4_0",
+      "best_variant_repo": "neuphonic/neutts-air-q4-gguf",
+      "best_variant_format": "gguf",
+      "formats": [
+        "gguf",
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 1831,
+      "likes": 906,
+      "created_at": "2025-09-15T14:30:42Z",
+      "why": "Text to speech, 748M parameters, ~0.51 GB of memory as Q4_0 \u2014 fits a phone (budget ~4 GB). Ready-made build: neuphonic/neutts-air-q4-gguf. License apache-2.0 (commercial use OK). 2K downloads last month, 906 likes, released 2025-09-15.",
+      "how_to_run": "Download the Q4_0 .gguf from neuphonic/neutts-air-q4-gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "neuphonic/neutts-air-q4-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 5734
+        },
+        {
+          "id": "neuphonic/neutts-air-q8-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 1041
+        },
+        {
+          "id": "mradermacher/neutts-air-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 956
+        },
+        {
+          "id": "Mungert/neutts-air-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 467
+        }
+      ],
+      "score": 0.5684
+    },
+    {
+      "id": "BreezeBlue/Breeze-TTS-2",
+      "url": "https://huggingface.co/BreezeBlue/Breeze-TTS-2",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 3466363713,
+      "params_h": "3.5B",
+      "ram_gb_min": 2.33,
+      "device_tier": "phone",
+      "best_variant": "4bit",
+      "best_variant_repo": "mlx-community/Breeze-TTS-2-mlx-4bit",
+      "best_variant_format": "mlx",
+      "formats": [
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "pytorch",
+        "safetensors"
+      ],
+      "license": "other",
+      "open_license": false,
+      "downloads": 14381,
+      "likes": 695,
+      "created_at": "2026-08-25T16:39:34Z",
+      "why": "Text to speech, 3.5B parameters, ~2.33 GB of memory as 4bit \u2014 fits a phone (budget ~4 GB). Ready-made build: mlx-community/Breeze-TTS-2-mlx-4bit. License other. 14K downloads last month, 695 likes, released 2026-08-25.",
+      "how_to_run": "Runs in iOS apps built on mlx-swift (e.g. the MLX examples).",
+      "derivatives": [
+        {
+          "id": "HoppouAI/Breeze-TTS-2.cpp",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 14612
+        },
+        {
+          "id": "cstr/breeze-tts-2-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 2115
+        },
+        {
+          "id": "EvoAwaken-Workshop/Breeze-TTS-2-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 1952
+        },
+        {
+          "id": "mlx-community/Breeze-TTS-2-mlx-4bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 1801
+        },
+        {
+          "id": "mlx-community/Breeze-TTS-2-mlx",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 1098
+        },
+        {
+          "id": "mlx-community/Breeze-TTS-2-mlx-8bit",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 970
+        }
+      ],
+      "score": 0.5584
+    },
+    {
+      "id": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 905788672,
+      "params_h": "906M",
+      "ram_gb_min": 1.01,
+      "device_tier": "phone",
+      "best_variant": "Q6_K",
+      "best_variant_repo": "sakasegawa/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF",
+      "best_variant_format": "gguf",
+      "formats": [
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "mlx",
+        "safetensors"
+      ],
+      "license": "apache-2.0",
+      "open_license": true,
+      "downloads": 1045846,
+      "likes": 205,
+      "created_at": "2026-01-21T08:57:38Z",
+      "why": "Text to speech, 906M parameters, ~1.01 GB of memory as Q6_K \u2014 fits a phone (budget ~4 GB). Ready-made build: sakasegawa/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF. License apache-2.0 (commercial use OK). 1.0M downloads last month, 205 likes, released 2026-01-21.",
+      "how_to_run": "Download the Q6_K .gguf from sakasegawa/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "cstr/qwen3-tts-0.6b-customvoice-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 10968
+        },
+        {
+          "id": "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
+          "formats": [
+            "mlx",
+            "safetensors"
+          ],
+          "downloads": 1754
+        },
+        {
+          "id": "sakasegawa/Qwen3-TTS-12Hz-0.6B-CustomVoice-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 392
+        }
+      ],
+      "score": 0.5476
+    },
+    {
+      "id": "microsoft/VibeVoice-1.5B",
+      "url": "https://huggingface.co/microsoft/VibeVoice-1.5B",
+      "status": "released",
+      "x_takes": [],
+      "x_posts": [],
+      "task": "text-to-speech",
+      "modality": "speech-out",
+      "params": 2704021985,
+      "params_h": "2.7B",
+      "ram_gb_min": 1.97,
+      "device_tier": "phone",
+      "best_variant": "Q4_K_M",
+      "best_variant_repo": "gguf-org/vibevoice-gguf",
+      "best_variant_format": "gguf",
+      "formats": [
+        "safetensors"
+      ],
+      "family_formats": [
+        "gguf",
+        "safetensors"
+      ],
+      "license": "mit",
+      "open_license": true,
+      "downloads": 603653,
+      "likes": 2501,
+      "created_at": "2025-08-25T13:46:48Z",
+      "why": "Text to speech, 2.7B parameters, ~1.97 GB of memory as Q4_K_M \u2014 fits a phone (budget ~4 GB). Ready-made build: gguf-org/vibevoice-gguf. License mit (commercial use OK). 604K downloads last month, 3K likes, released 2025-08-25.",
+      "how_to_run": "Download the Q4_K_M .gguf from gguf-org/vibevoice-gguf and run it with the runtime named on the model card (speech/audio GGUFs need their own llama.cpp-based tool, not chat apps).",
+      "derivatives": [
+        {
+          "id": "gguf-org/vibevoice-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 1598
+        },
+        {
+          "id": "cstr/vibevoice-1.5b-GGUF",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 1209
+        },
+        {
+          "id": "ThePun1sher/VibeVoice-1.5B-gguf",
+          "formats": [
+            "gguf"
+          ],
+          "downloads": 57
+        },
+        {
+          "id": "Wildminder/VibeVoice-Quants",
+          "formats": [
+            "gguf",
+            "safetensors"
+          ],
+          "downloads": 49
+        }
+      ],
+      "score": 0.5414
+    }
+  ],
+  "timing_ms": {
+    "parse": 2408,
+    "search": 21361,
+    "explain": 24,
+    "total": 23793
+  }
+}

@@ -1,0 +1,10 @@
+openbmb/VoxCPM2 text-to-speech
+hynt/F5-TTS-Vietnamese-ViVoice text-to-speech
+microsoft/VibeVoice-1.5B text-to-speech
+LordDavis778/BlueArchivevoicemodels None
+vibevoice/VibeVoice-7B text-to-speech
+vibevoice/VibeVoice-1.5B text-to-speech
+nari-labs/Dia-1.6B text-to-speech
+Aratako/Irodori-TTS-600M-v3-VoiceDesign text-to-speech
+remiai3/TTS_MODELS_FOR_APP text-to-speech
+pnnbao-ump/VieNeu-TTS-v3-Nano text-to-speech

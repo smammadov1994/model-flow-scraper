@@ -218,13 +218,44 @@ def build_filter(p: Plan, opts: dict) -> models.Filter:
     return models.Filter(must=must, must_not=must_not)
 
 
-def hybrid_search(text: str, flt: models.Filter, limit: int = 150) -> list[models.ScoredPoint]:
+_HARDWARE_WORDS = re.compile(
+    r"\b(on|for|in|with|under|below|within|less than)?\s*(my|a|an|the)?\s*"
+    r"(i?phone|android|mobile|smartphone|mac ?book( pro| air)?|mac|laptop|notebook|pc|computer|gpu|vram|rtx ?\d*|"
+    r"nvidia|cuda|on[- ]device|devices?|edge|locally|offline|\d+(\.\d+)?\s*gb( of)?( ram| vram| memory)?|ram|memory)\b", re.I)
+_SIZE_WORDS = re.compile(r"\b(small|smallest|tiny|little|lightweight|light|compact|mini)\b", re.I)
+
+
+def search_text(p: Plan) -> str:
+    """What we match against model descriptions. Hardware and size are enforced by filters, so words like
+    'small', 'MacBook', '8GB VRAM' are removed — left in, they pull in models with 'small' in the name or
+    that merely mention Macs/edge devices."""
+    t = _SIZE_WORDS.sub(" ", _HARDWARE_WORDS.sub(" ", p.semantic_query))
+    t = re.sub(r"\b(that|which)?\s*(can )?(runs?|running|fits?|works?)\b.*$", " ", t, flags=re.I)
+    t = re.sub(r"\s+", " ", t).strip(" ,.-")
+    if len(t) < 4:  # nothing left: fall back to the task description
+        t = " ".join(TASK_PLAIN.get(x, (x, ""))[1] or x for x in p.tasks) or p.question
+    if p.keywords:
+        t += " " + " ".join(k for k in p.keywords if k.lower() not in t.lower())
+    return t
+
+
+def hybrid_search(text: str, flt: models.Filter, limit: int = 300) -> list[models.ScoredPoint]:
+    """Four candidate lists fused with RRF: semantic match, keyword match, and the most-downloaded models
+    among the top 1,000 of each. The popularity lists matter when hundreds of models fit equally well by
+    text (every phone-ready TTS model "turns text into speech") — without them a 10M-download staple can
+    miss the cut."""
     dense = index.embed_query(text)
     return index.client().query_points(
         config.COLLECTION,
         prefetch=[
             models.Prefetch(query=dense, using="dense", filter=flt, limit=limit),
             models.Prefetch(query=models.Document(text=text, model=config.BM25_MODEL), using="bm25", filter=flt, limit=limit),
+            # most-downloaded among the top semantic / keyword matches: popular *and* relevant
+            models.Prefetch(prefetch=[models.Prefetch(query=dense, using="dense", filter=flt, limit=1000)],
+                            query=models.OrderByQuery(order_by=models.OrderBy(key="downloads", direction="desc")), limit=40),
+            models.Prefetch(prefetch=[models.Prefetch(query=models.Document(text=text, model=config.BM25_MODEL),
+                                                      using="bm25", filter=flt, limit=1000)],
+                            query=models.OrderByQuery(order_by=models.OrderBy(key="downloads", direction="desc")), limit=40),
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         limit=limit,
@@ -248,6 +279,8 @@ def _score(pt: models.ScoredPoint, top: float, p: Plan) -> float:
     rid = (r.get("id") or "").lower()
     if re.search(r"(^|[-_/])(tests?|testing|tiny-random|random|dummy|debug|toy)([-_/]|$)", rid):
         penalty += 0.3  # CI fixtures and toy checkpoints, not real models
+    if re.search(r"dflash|dspark|eagle-?3?\b|medusa|draft|(^|[-_])mtp([-_]|$)|speculat", rid.split("/")[-1]):
+        penalty += 0.3  # speculative-decoding draft heads: helpers for a bigger model, not usable alone
     if r.get("task") in enrich.LLM_TASKS and (r.get("params") or 1e10) < 3e8:
         penalty += 0.15  # sub-300M "chat" models are rarely what anyone wants
     wants_code = any(k.lower().startswith(("code", "coding", "program")) for k in p.keywords) or bool(
@@ -259,7 +292,14 @@ def _score(pt: models.ScoredPoint, top: float, p: Plan) -> float:
         elif r.get("modality") == "code":
             code = 0.3  # general model that lists coding among its skills
     buzz = min(1.0, math.log10((r.get("x_buzz") or 0) + 1) / 4)  # recent X attention (n8n joined file)
-    return 0.50 * rel + 0.25 * pop + 0.12 * rec + 0.05 * fmt + 0.05 * task + 0.03 * kw + 0.03 * buzz + 0.12 * code - penalty
+    if age_days > 30 and not r.get("x_buzz") and (r.get("likes") or 0) < 20:
+        dl = r.get("downloads") or 0
+        penalty += 0.08 if dl < 100 else 0.04 if dl < 1000 else 0.0  # barely used and not new
+    small = 0.0
+    if p.ram_cap_gb and _SIZE_WORDS.search(p.question) and r.get("family_ram_gb_min"):
+        small = max(0.0, 1 - r["family_ram_gb_min"] / p.ram_cap_gb)  # "small/tiny ..." → lighter is better
+    return (0.45 * rel + 0.32 * pop + 0.10 * rec + 0.05 * fmt + 0.05 * task + 0.03 * kw + 0.03 * buzz
+            + 0.12 * code + 0.08 * small - penalty)
 
 
 def collapse(points: list[models.ScoredPoint], p: Plan) -> list[tuple[float, dict]]:
@@ -296,12 +336,14 @@ def pick_variant(root: dict, device: str, cap: float | None) -> tuple[str | None
                 continue
             fits = cap is None or ram <= cap
             pref = VARIANT_PREF.index(v) if v in VARIANT_PREF else len(VARIANT_PREF)
+            bucket = 0 if pref <= VARIANT_PREF.index("4.5bit") else 1 if pref <= VARIANT_PREF.index("Q6_K") else 2
             dev_bonus = 0 if fmt in PREFERRED_FORMATS.get(device, set()) else 1
-            cands.append((not fits, dev_bonus, pref, ram, v, m["id"], fmt))
+            # within a quality bucket prefer the build most people use (official / well-known quantizers)
+            cands.append((not fits, dev_bonus, bucket, -(m.get("downloads") or 0), pref, ram, v, m["id"], fmt))
     if not cands:
         return None, None, None, None
     cands.sort()
-    _, _, _, ram, v, repo, fmt = cands[0]
+    *_, ram, v, repo, fmt = cands[0]
     return v, repo, ram, fmt
 
 
@@ -385,8 +427,12 @@ def overview(question: str, results: list[dict]) -> str | None:
     if not results or not llm.available():
         return None
     facts = "\n".join(f"{i + 1}. {r['id']}: {r['why']} How to run: {r['how_to_run']}" for i, r in enumerate(results[:5]))
-    try:
-        return llm.complete(ANSWER_SYSTEM, f"Request: {question}\nCandidates:\n{facts}", max_tokens=220, timeout=60).strip()
+    schema = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
+    try:  # structured output keeps small local models from "thinking out loud" into the answer
+        out = llm.complete_json(ANSWER_SYSTEM + " Reply as JSON {\"answer\": \"...\"}, at most 70 words.",
+                                f"Request: {question}\nCandidates:\n{facts}", schema, max_tokens=250, timeout=60)
+        ans = str(out.get("answer") or "").strip()
+        return ans if 20 < len(ans) < 900 and not ans.lower().startswith(("okay", "ok,", "let me", "first,")) else None
     except Exception:
         return None
 
@@ -398,9 +444,7 @@ def ask(question: str, device: str | None = None, limit: int = 8, use_llm: bool 
     t0 = time.time()
     p = make_plan(question, device, use_llm=use_llm)
     t1 = time.time()
-    text = p.semantic_query
-    if p.keywords:
-        text += " " + " ".join(p.keywords)
+    text = search_text(p)
     relaxed: list[str] = []
     ranked: list[tuple[float, dict]] = []
     for i, (label, opts) in enumerate(LADDER):
@@ -422,6 +466,7 @@ def ask(question: str, device: str | None = None, limit: int = 8, use_llm: bool 
     ans = overview(question, results) if answer and use_llm else None
     plan = asdict(p)
     plan["parser"] = p.parser
+    plan["search_text"] = text
     return {
         "question": question, "plan": plan, "relaxed": relaxed, "answer": ans, "results": results,
         "timing_ms": {"parse": int((t1 - t0) * 1000), "search": int((t2 - t1) * 1000),
