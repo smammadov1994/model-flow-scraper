@@ -125,11 +125,27 @@ def cmd_add_from_text(a):
         print(f"Indexed {n}.")
 
 
+def _ask_server(a) -> dict | None:
+    """If `model-finder serve` is running it already has the embedding model loaded — ask it (seconds, not
+    the ~15 s a fresh process spends loading the model)."""
+    import httpx
+
+    if a.no_llm or a.no_answer:
+        return None
+    try:
+        r = httpx.post(f"http://127.0.0.1:{config.WEB_PORT}/api/ask",
+                       json={"question": a.question, "device": a.device, "limit": a.limit}, timeout=180)
+        return r.json() if r.status_code == 200 else None
+    except httpx.HTTPError:
+        return None
+
+
 def cmd_ask(a):
     from . import query
 
     _need_qdrant()
-    res = query.ask(a.question, device=a.device, limit=a.limit, use_llm=not a.no_llm, answer=not a.no_answer)
+    res = _ask_server(a) or query.ask(a.question, device=a.device, limit=a.limit, use_llm=not a.no_llm,
+                                      answer=not a.no_answer)
     if a.json:
         print(json.dumps(res, indent=2))
         return

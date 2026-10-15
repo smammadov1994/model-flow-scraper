@@ -115,6 +115,8 @@ Or open the web page:
 
 and go to http://localhost:8765 (`?demo=1` shows a canned answer without the backend).
 
+If `model-finder serve` is running, `ask` sends the question to it (the model is already loaded there), which is much faster than loading it fresh (~15 s).
+
 Useful flags for `ask`: `--device phone|mac|laptop|gpu|any` (overrides what's guessed from the question),
 `--limit 10`, `--json`, `--no-llm` (keyword rules only), `--no-answer` (skip the short LLM overview).
 

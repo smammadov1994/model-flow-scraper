@@ -58,7 +58,10 @@ class _SentenceTransformer:
 
         dev = config.DENSE_DEVICE or ("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
         kw = {"torch_dtype": torch.float16} if dev != "cpu" else {}
-        self.m = SentenceTransformer(name, device=dev, model_kwargs=kw)
+        try:  # already downloaded: load from disk, no Hugging Face round-trips (or rate-limit warnings)
+            self.m = SentenceTransformer(name, device=dev, model_kwargs=kw, local_files_only=True)
+        except Exception:
+            self.m = SentenceTransformer(name, device=dev, model_kwargs=kw)
         dim_fn = getattr(self.m, "get_embedding_dimension", None) or self.m.get_sentence_embedding_dimension
         self.dim = dim_fn()
 
