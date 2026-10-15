@@ -2,7 +2,11 @@
   "id": "p_demo01",
   "title": "Offline voice assistant",
   "goal": "A voice assistant that runs on my iPhone",
-  "device": { "kind": "phone", "label": "iPhone", "ram_cap_gb": 4.0 },
+  "device": {
+    "kind": "phone",
+    "label": "iPhone",
+    "ram_cap_gb": 4.0
+  },
   "nodes": [
     {
       "id": "n1",
@@ -11,8 +15,13 @@
       "step": "Captures the user's voice",
       "task": null,
       "inputs": [],
-      "outputs": ["audio"],
-      "position": { "x": 0, "y": 140 },
+      "outputs": [
+        "audio"
+      ],
+      "position": {
+        "x": 0,
+        "y": 140
+      },
       "model": null,
       "alternatives": [],
       "status": "ok",
@@ -24,9 +33,16 @@
       "title": "Speech to text",
       "step": "Transcribes what the user said",
       "task": "automatic-speech-recognition",
-      "inputs": ["audio"],
-      "outputs": ["text"],
-      "position": { "x": 290, "y": 120 },
+      "inputs": [
+        "audio"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "position": {
+        "x": 290,
+        "y": 120
+      },
       "model": {
         "id": "openai/whisper-large-v3-turbo",
         "url": "https://huggingface.co/openai/whisper-large-v3-turbo",
@@ -40,7 +56,9 @@
         "downloads": 5100000,
         "how_to_run": "whisper.cpp runs this on iOS and Android. Download the q5_0 .bin file and load it with the whisper.cpp Swift package.",
         "why": "Best accuracy that still fits the phone: 809M parameters, quantized to about 0.6 GB. Handles many languages and noisy rooms well.",
-        "fit": 0.91
+        "fit": 0.91,
+        "hosting": "local",
+        "providers": []
       },
       "alternatives": [
         {
@@ -56,7 +74,9 @@
           "downloads": 2400000,
           "how_to_run": "whisper.cpp: download ggml-small-q5_1.bin and run it with the Swift package.",
           "why": "Half the memory of the turbo model. Good for short commands, a bit less accurate on accents.",
-          "fit": 0.84
+          "fit": 0.84,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "distil-whisper/distil-large-v3",
@@ -71,7 +91,9 @@
           "downloads": 880000,
           "how_to_run": "whisper.cpp supports distil models. Use the ggml-distil-large-v3 .bin file.",
           "why": "Distilled for speed: about 6x faster than the original large model, English only.",
-          "fit": 0.8
+          "fit": 0.8,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "UsefulSensors/moonshine-base",
@@ -86,7 +108,9 @@
           "downloads": 310000,
           "how_to_run": "Run with ONNX Runtime Mobile. English only, built for live speech on small devices.",
           "why": "Tiny and fast. Pick this if memory is the main worry.",
-          "fit": 0.72
+          "fit": 0.72,
+          "hosting": "local",
+          "providers": []
         }
       ],
       "status": "ok",
@@ -98,9 +122,16 @@
       "title": "Assistant brain",
       "step": "Understands the request and writes a reply",
       "task": "text-generation",
-      "inputs": ["text"],
-      "outputs": ["text"],
-      "position": { "x": 650, "y": 120 },
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "position": {
+        "x": 650,
+        "y": 120
+      },
       "model": {
         "id": "Qwen/Qwen2.5-1.5B-Instruct",
         "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct",
@@ -114,7 +145,31 @@
         "downloads": 2750000,
         "how_to_run": "llama.cpp or LLM.swift: download qwen2.5-1.5b-instruct-q4_k_m.gguf and load it with a 2048-token context.",
         "why": "Strong instruction following for its size. At 4-bit it needs about 1.1 GB, leaving room for the other two steps.",
-        "fit": 0.88
+        "fit": 0.88,
+        "hosting": "local",
+        "providers": [
+          {
+            "name": "together",
+            "price_in": 0.2,
+            "price_out": 0.6,
+            "tokens_per_s": 95.0,
+            "latency_ms": 420
+          },
+          {
+            "name": "fireworks",
+            "price_in": 0.22,
+            "price_out": 0.22,
+            "tokens_per_s": 140.0,
+            "latency_ms": 310
+          },
+          {
+            "name": "deepinfra",
+            "price_in": 0.06,
+            "price_out": null,
+            "tokens_per_s": null,
+            "latency_ms": null
+          }
+        ]
       },
       "alternatives": [
         {
@@ -130,7 +185,9 @@
           "downloads": 1900000,
           "how_to_run": "llama.cpp: use the Q4_K_M GGUF file. Accept the Llama license on Hugging Face first.",
           "why": "Smaller and quick, with a custom (not fully open) license.",
-          "fit": 0.8
+          "fit": 0.8,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "google/gemma-3-1b-it",
@@ -145,7 +202,9 @@
           "downloads": 1200000,
           "how_to_run": "llama.cpp: download the Q4_K_M GGUF file.",
           "why": "Good multilingual chat in under 1 GB.",
-          "fit": 0.78
+          "fit": 0.78,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "Qwen/Qwen2.5-3B-Instruct",
@@ -160,7 +219,9 @@
           "downloads": 1500000,
           "how_to_run": "llama.cpp: download the Q4_K_M GGUF. Needs about 2.1 GB, which is tight on a 4 GB budget.",
           "why": "Smarter answers, but it would push the total close to the memory limit.",
-          "fit": 0.6
+          "fit": 0.6,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
@@ -175,7 +236,9 @@
           "downloads": 640000,
           "how_to_run": "llama.cpp: use the Q4_K_M GGUF file.",
           "why": "Fully open and tuned for small devices.",
-          "fit": 0.76
+          "fit": 0.76,
+          "hosting": "local",
+          "providers": []
         }
       ],
       "status": "ok",
@@ -187,9 +250,16 @@
       "title": "Text to speech",
       "step": "Speaks the reply out loud",
       "task": "text-to-speech",
-      "inputs": ["text"],
-      "outputs": ["audio"],
-      "position": { "x": 1010, "y": 120 },
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "audio"
+      ],
+      "position": {
+        "x": 1010,
+        "y": 120
+      },
       "model": {
         "id": "hexgrad/Kokoro-82M",
         "url": "https://huggingface.co/hexgrad/Kokoro-82M",
@@ -203,7 +273,9 @@
         "downloads": 1350000,
         "how_to_run": "ONNX Runtime Mobile: load model_quantized.onnx and the voices file, then pass phonemes in.",
         "why": "Natural-sounding voices from just 82M parameters. Runs faster than real time on a phone.",
-        "fit": 0.95
+        "fit": 0.95,
+        "hosting": "local",
+        "providers": []
       },
       "alternatives": [
         {
@@ -219,7 +291,9 @@
           "downloads": 520000,
           "how_to_run": "Piper runs through ONNX Runtime. Pick a voice such as en_US-lessac-medium.",
           "why": "Very small and robotic-but-clear. Lowest memory option.",
-          "fit": 0.8
+          "fit": 0.8,
+          "hosting": "local",
+          "providers": []
         },
         {
           "id": "microsoft/speecht5_tts",
@@ -234,7 +308,9 @@
           "downloads": 410000,
           "how_to_run": "Needs a Core ML or ONNX conversion to run on iPhone.",
           "why": "Older design with less natural voices; extra conversion work.",
-          "fit": 0.55
+          "fit": 0.55,
+          "hosting": "local",
+          "providers": []
         }
       ],
       "status": "ok",
@@ -246,9 +322,14 @@
       "title": "Speaker",
       "step": "Plays the spoken reply",
       "task": null,
-      "inputs": ["audio"],
+      "inputs": [
+        "audio"
+      ],
       "outputs": [],
-      "position": { "x": 1370, "y": 140 },
+      "position": {
+        "x": 1370,
+        "y": 140
+      },
       "model": null,
       "alternatives": [],
       "status": "ok",
@@ -256,16 +337,42 @@
     }
   ],
   "edges": [
-    { "id": "e1", "source": "n1", "target": "n2", "label": "audio" },
-    { "id": "e2", "source": "n2", "target": "n3", "label": "text" },
-    { "id": "e3", "source": "n3", "target": "n4", "label": "text" },
-    { "id": "e4", "source": "n4", "target": "n5", "label": "audio" }
+    {
+      "id": "e1",
+      "source": "n1",
+      "target": "n2",
+      "label": "audio"
+    },
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "label": "text"
+    },
+    {
+      "id": "e3",
+      "source": "n3",
+      "target": "n4",
+      "label": "text"
+    },
+    {
+      "id": "e4",
+      "source": "n4",
+      "target": "n5",
+      "label": "audio"
+    }
   ],
   "budget": {
     "ram_cap_gb": 4.0,
     "total_ram_gb": 1.9,
     "fits": true,
-    "note": "All three models loaded at once need about 1.9 GB of the iPhone's roughly 4 GB budget."
+    "note": "All three models loaded at once need about 1.9 GB of the iPhone's roughly 4 GB budget.",
+    "mode": "local"
   },
-  "updated_at": "2026-10-15T20:00:00Z"
+  "updated_at": "2026-10-15T20:00:00Z",
+  "deployment": {
+    "mode": "phone",
+    "label": "iPhone · on-device · ~4 GB budget",
+    "hardware": null
+  }
 }

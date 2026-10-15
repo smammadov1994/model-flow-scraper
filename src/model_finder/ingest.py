@@ -141,6 +141,11 @@ def ingest(con, rows: Iterable[dict], source: str) -> int:
             print(f"  ! skipped {raw['id']}: {e!r}")
             continue
         batch.append((rec, raw, source))
+        if "inferenceProviderMapping" in row and source != "seed":  # live API rows: refresh hosted-API info
+            from . import providers
+
+            mapping = row["inferenceProviderMapping"]
+            providers.store(con, rec["id"], mapping if isinstance(mapping, (list, dict)) else [])
         if len(batch) >= 2000:
             n += catalog.upsert(con, batch)
             con.commit()

@@ -80,3 +80,34 @@ def test_n8n_validate_rejects_broken_files():
     good["nodes"][0]["position"] = {"x": 0, "y": 0}
     with pytest.raises(ValueError, match=r"\[x, y\]"):
         n8n.validate(good)
+
+
+def test_infer_mode_from_message(monkeypatch):
+    from model_finder import studio
+
+    monkeypatch.setattr(studio.jev, "available", lambda: False)
+    assert studio.infer_mode("a voice assistant on my iPhone") == "phone"
+    assert studio.infer_mode("summarize PDFs offline on my MacBook") == "local"
+    assert studio.infer_mode("a support chatbot as a hosted API for my website") == "cloud"
+    assert studio.infer_mode("transcribe meetings and summarize them") is None  # -> the harness asks
+
+
+def test_cloud_budget_and_hosted_bonus():
+    nodes = [node("stt", "model", "automatic-speech-recognition", dict(M("openai/whisper", 1.0), hosting="hosted_api",
+                                                                        providers=[{"name": "fal-ai"}])),
+             node("llm", "model", "text-generation", dict(M("a/self", 40.0), hosting="gpu_server", providers=[]))]
+    b = resolve._budget(nodes, None, "cloud")
+    assert b["mode"] == "cloud" and b["total_ram_gb"] == 40.0 and "48 GB" in b["note"] and "fal-ai" in b["note"]
+    assert resolve._hosted_bonus([]) == 0 and resolve._hosted_bonus([{"name": "featherless-ai"}]) == 0.05
+    assert resolve._hosted_bonus([{"name": "together"}, {"name": "fireworks-ai"}]) > 0.2
+
+
+def test_cloud_chat_exports_to_hf_router():
+    p = {"id": "s_2", "title": "Cloud", "goal": "g", "device": {}, "budget": {},
+         "nodes": [dict(node("llm", "model", "text-generation", dict(M("zai-org/GLM-5.3", 30.0), hosting="hosted_api")),
+                        position={"x": 0, "y": 0})], "edges": []}
+    wf = n8n.export(p)
+    http = next(x for x in wf["nodes"] if x["type"].endswith("httpRequest"))
+    assert http["parameters"]["url"] == "https://router.huggingface.co/v1/chat/completions"
+    assert '"zai-org/GLM-5.3"' in http["parameters"]["jsonBody"]
+    assert http["parameters"]["headerParameters"]["parameters"][0]["value"] == "Bearer PASTE_YOUR_HF_TOKEN"

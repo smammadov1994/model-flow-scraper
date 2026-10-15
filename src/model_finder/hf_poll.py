@@ -16,7 +16,8 @@ from . import catalog, config, families, ingest
 
 API = "https://huggingface.co/api/models"
 EXPAND = ["author", "baseModels", "cardData", "config", "createdAt", "downloads", "gguf", "lastModified",
-          "library_name", "likes", "pipeline_tag", "safetensors", "siblings", "tags", "transformersInfo", "trendingScore"]
+          "library_name", "likes", "pipeline_tag", "safetensors", "siblings", "tags", "transformersInfo", "trendingScore",
+          "inferenceProviderMapping"]
 
 
 def _client() -> httpx.Client:

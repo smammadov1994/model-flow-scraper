@@ -226,11 +226,19 @@ Open **http://localhost:8765/studio/** while `model-finder serve` runs. Describe
 4. lays the steps out as connected boxes. Click a box for why it was chosen, how to run it, and alternatives
    ("Use this" swaps). Drag boxes to rearrange (saved).
 
+**Where it runs.** If your request doesn't say, the chat first asks *"Where should this run?"* — **This computer**
+(hardware detected automatically, e.g. Apple M1 Pro · 16 GB → ~11 GB for models; only models that fit are
+recommended), **My phone** (on-device formats, ~4 GB), or **Cloud** (no local limits; models with a live hosted API
+— Together, Fireworks, DeepInfra, fal, Replicate… with prices from Hugging Face Inference Providers — are preferred,
+otherwise it says which GPU to rent). A "Run on" switch above the chat box sets this up front.
+Hosted-API data refreshes with `setup`/`reseed`/`update`.
+
 **Export to n8n** writes a workflow that imports into n8n 2.x: a manual trigger, one node per step (chat models
 available as GGUF become an HTTP call to Ollama — `ollama pull` the model first; other steps are Code-node stubs
 that name the model and how to run it), and a sticky note per model. n8n in Docker reaches Ollama on your Mac at
 `host.docker.internal` (default); for a native n8n set `MF_N8N_OLLAMA_URL=http://localhost:11434`.
-Tested: imports into n8n 2.6.4 and runs end to end (trigger → stubs → Ollama reply).
+Tested: imports into n8n 2.6.4 and runs end to end (trigger → stubs → Ollama reply). Cloud designs call hosted chat models through
+`https://router.huggingface.co/v1/chat/completions` — paste your Hugging Face token into that node's header.
 
 Claude planning: set `ANTHROPIC_API_KEY` in `.env` (uses `claude-opus-5-5`), or log in the Claude Code CLI
 (`claude`, then `/login`) to use your subscription. `MF_STUDIO_PLANNER=anthropic|cli|templates` forces one.

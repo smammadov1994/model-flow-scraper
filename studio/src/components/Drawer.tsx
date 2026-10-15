@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ModelInfo, PipelineNode } from '../types'
+import type { ModelInfo, PipelineNode, Provider } from '../types'
 import { taskLabel } from '../taskLabels'
-import { StatusBadge, fitPercent } from './nodes'
+import { HostingBadge, StatusBadge, fitPercent } from './nodes'
 
 interface Props {
   node: PipelineNode
@@ -15,6 +15,25 @@ function formatDownloads(n: number | null | undefined): string | null {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`
   return String(n)
+}
+
+function money(n: number): string {
+  const two = Math.abs(n * 100 - Math.round(n * 100)) < 1e-6
+  return `$${n.toFixed(two ? 2 : 3)}`
+}
+
+export function providerPrice(p: Provider): string | null {
+  const parts: string[] = []
+  if (typeof p.price_in === 'number') parts.push(`${money(p.price_in)} in`)
+  if (typeof p.price_out === 'number') parts.push(`${money(p.price_out)} out`)
+  return parts.length ? `${parts.join(' / ')} per 1M tokens` : null
+}
+
+function providerSpeed(p: Provider): string | null {
+  const parts: string[] = []
+  if (typeof p.tokens_per_s === 'number') parts.push(`${Math.round(p.tokens_per_s)} tokens/s`)
+  if (typeof p.latency_ms === 'number') parts.push(`${Math.round(p.latency_ms)} ms latency`)
+  return parts.length ? parts.join(' · ') : null
 }
 
 function safeUrl(u: string | null | undefined): string | null {
@@ -144,8 +163,28 @@ export default function Drawer({ node, swapping, onSwap, onClose }: Props) {
                 {m.format ? <span className="chip">{m.format}</span> : null}
                 {m.variant ? <span className="chip">{m.variant}</span> : null}
                 {fit ? <span className="chip chip-fit">fit {fit}</span> : null}
+                <HostingBadge hosting={m.hosting} />
               </div>
             </section>
+
+            {m.providers && m.providers.length > 0 ? (
+              <section className="drawer-section">
+                <h3>Hosted APIs</h3>
+                <ul className="providers">
+                  {m.providers.map((pr) => {
+                    const price = providerPrice(pr)
+                    const speed = providerSpeed(pr)
+                    return (
+                      <li key={pr.name} className="provider">
+                        <div className="provider-name">{pr.name}</div>
+                        {price ? <div className="provider-line">{price}</div> : null}
+                        {speed ? <div className="provider-line">{speed}</div> : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ) : null}
 
             {m.why ? (
               <section className="drawer-section">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChatMessage } from '../types'
+import type { AskOption, ChatMessage, Deployment } from '../types'
 
 const EXAMPLES = [
   'A voice assistant that runs on my iPhone',
@@ -13,10 +13,20 @@ const PROGRESS = ['Planning steps…', 'Finding models…', 'Checking memory…'
 interface Props {
   messages: ChatMessage[]
   pending: boolean
-  onSend: (text: string) => void
+  onSend: (text: string, deployment?: Deployment) => void
   onNew: () => void
   canReset: boolean
+  target: Deployment | null
+  onTarget: (t: Deployment | null) => void
+  hardwareLabel: string | null
 }
+
+const TARGETS: { value: Deployment | null; label: string }[] = [
+  { value: null, label: 'Ask me' },
+  { value: 'local', label: 'This computer' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'cloud', label: 'Cloud' },
+]
 
 function ProgressRow() {
   const [i, setI] = useState(0)
@@ -36,7 +46,7 @@ function ProgressRow() {
   )
 }
 
-export default function ChatPanel({ messages, pending, onSend, onNew, canReset }: Props) {
+export default function ChatPanel({ messages, pending, onSend, onNew, canReset, target, onTarget, hardwareLabel }: Props) {
   const [text, setText] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -88,13 +98,58 @@ export default function ChatPanel({ messages, pending, onSend, onNew, canReset }
           </div>
         ) : null}
 
-        {messages.map((m, i) => (
-          <div key={i} className={`msg msg-${m.role}`}>
-            {m.role === 'error' ? <span className="sr-only">Error: </span> : null}
-            {m.text}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          const answered = messages.slice(i + 1).some((x) => x.role === 'user')
+          return (
+            <div key={i} className={`msg msg-${m.role}${m.ask ? ' msg-ask' : ''}`}>
+              {m.role === 'error' ? <span className="sr-only">Error: </span> : null}
+              {m.text}
+              {m.ask ? (
+                <div className="ask-options" role="group" aria-label={m.ask.question}>
+                  {m.ask.options.map((o: AskOption) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className="ask-btn"
+                      disabled={answered || pending}
+                      onClick={() => onSend(o.label, o.value)}
+                    >
+                      <span className="ask-label">{o.label}</span>
+                      {o.detail ? <span className="ask-detail">{o.detail}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
         {pending ? <ProgressRow /> : null}
+      </div>
+
+      <div className="target-row">
+        <span className="target-title" id="target-title">
+          Run on:
+        </span>
+        <div className="seg" role="radiogroup" aria-labelledby="target-title">
+          {TARGETS.map((t) => {
+            const on = target === t.value
+            const hw = t.value === 'local' && hardwareLabel ? hardwareLabel : undefined
+            return (
+              <button
+                key={t.label}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`seg-btn${on ? ' is-on' : ''}`}
+                title={hw}
+                onClick={() => onTarget(t.value)}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+        {hardwareLabel && target === 'local' ? <span className="target-hw">{hardwareLabel}</span> : null}
       </div>
 
       <form

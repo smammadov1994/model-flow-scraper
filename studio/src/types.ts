@@ -1,6 +1,42 @@
 export type NodeKind = 'input' | 'model' | 'logic' | 'output'
 export type NodeStatus = 'ok' | 'no_match' | 'over_budget' | 'pending'
 
+export type Deployment = 'local' | 'phone' | 'cloud'
+export type Hosting = 'local' | 'hosted_api' | 'gpu_server'
+
+export interface Provider {
+  name: string
+  price_in?: number | null
+  price_out?: number | null
+  tokens_per_s?: number | null
+  latency_ms?: number | null
+}
+
+export interface HardwareInfo {
+  chip?: string | null
+  ram_gb?: number | null
+  gpu?: string | null
+  vram_gb?: number | null
+  unified?: boolean | null
+}
+
+export interface PipelineDeployment {
+  mode: Deployment | 'other'
+  label?: string | null
+  hardware?: HardwareInfo | null
+}
+
+export interface AskOption {
+  label: string
+  value: Deployment
+  detail?: string | null
+}
+
+export interface Ask {
+  question: string
+  options: AskOption[]
+}
+
 export interface ModelInfo {
   id: string
   url?: string | null
@@ -15,6 +51,8 @@ export interface ModelInfo {
   how_to_run?: string | null
   why?: string | null
   fit?: number | null
+  hosting?: Hosting | null
+  providers?: Provider[] | null
 }
 
 export interface PipelineNode {
@@ -43,22 +81,31 @@ export interface Pipeline {
   id: string
   title: string
   goal?: string
-  device: { kind: string; label: string; ram_cap_gb: number }
+  device: { kind: string; label: string; ram_cap_gb: number | null }
+  deployment?: PipelineDeployment | null
   nodes: PipelineNode[]
   edges: PipelineEdge[]
-  budget: { ram_cap_gb: number; total_ram_gb: number; fits: boolean; note?: string | null }
+  budget: {
+    ram_cap_gb: number | null
+    total_ram_gb: number
+    fits: boolean
+    note?: string | null
+    mode?: string | null
+  }
   updated_at?: string
 }
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'error'
   text: string
+  ask?: Ask | null
 }
 
 export interface ChatResponse {
   session_id: string
-  reply: string
-  pipeline: Pipeline
+  reply?: string | null
+  pipeline: Pipeline | null
+  ask?: Ask | null
   timing_ms?: Record<string, number>
   planner?: string
 }
@@ -67,4 +114,15 @@ export interface SessionResponse {
   session_id: string
   messages: { role: string; text: string }[]
   pipeline: Pipeline | null
+}
+
+export interface HardwareResponse {
+  label: string
+  kind?: string
+  chip?: string | null
+  ram_gb?: number | null
+  gpu?: string | null
+  vram_gb?: number | null
+  unified?: boolean | null
+  budget_gb?: number | null
 }

@@ -89,6 +89,10 @@ def run(force_download: bool = False, limit: int | None = None) -> int:
                 yield r
 
         stored = ingest.ingest(con, counted(), "seed")
+    from . import providers
+
+    providers.refresh_from_parquet(path)
+    with catalog.session() as con:
         catalog.kv_set(con, "last_seed", {"at": time.time(), "snapshot_mtime": path.stat().st_mtime, "rows": stored})
     print(f"Seeded {stored:,} models in {time.time() - t0:.0f}s")
     return stored

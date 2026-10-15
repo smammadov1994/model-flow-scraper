@@ -5,11 +5,64 @@ from __future__ import annotations
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from .. import catalog, jev, query
+from .. import catalog, jev, providers, query
 from ..summarize import TASK_PLAIN
 
 ALTERNATIVES = 4
 X_GAP, Y_GAP = 380, 190
+
+
+CHAT_TASKS = {"text-generation", "image-text-to-text", "any-to-any", "audio-text-to-text"}
+# huggingface_hub InferenceClient method per task, for hosted-API how-to lines
+CLIENT_METHOD = {"automatic-speech-recognition": "automatic_speech_recognition", "text-to-speech": "text_to_speech",
+                 "text-to-image": "text_to_image", "image-to-image": "image_to_image", "feature-extraction": "feature_extraction",
+                 "sentence-similarity": "sentence_similarity", "text-classification": "text_classification",
+                 "translation": "translation", "summarization": "summarization", "text-to-video": "text_to_video",
+                 "image-classification": "image_classification", "object-detection": "object_detection",
+                 "token-classification": "token_classification", "image-to-text": "image_to_text"}
+
+
+def _gpu_for(ram: float | None) -> str:
+    if not ram:
+        return "a GPU server"
+    for cap, name in ((24, "one 24 GB GPU (L4 / RTX 4090)"), (48, "one 48 GB GPU (L40S / A6000)"),
+                      (80, "one 80 GB GPU (A100 / H100)")):
+        if ram <= cap:
+            return name
+    return f"{int(-(-ram // 80))} x 80 GB GPUs"
+
+
+def _matching(provs: list[dict], task: str | None) -> list[dict]:
+    want = {"conversational", "text-generation"} if task in CHAT_TASKS else {task}
+    return [p for p in provs if p.get("task") in want] or []
+
+
+CATCH_ALL = {"featherless-ai", "hf-inference"}  # host huge numbers of community models: weak quality signal
+
+
+def _hosted_bonus(live: list[dict]) -> float:
+    """How much a live hosted API should lift a model in cloud mode. Providers that publish pricing / speed
+    (Together, Fireworks, Groq, Novita, fal, Replicate...) curate what they host; catch-all hosts don't."""
+    if not live:
+        return 0.0
+    curated = [p for p in live if p["name"] not in CATCH_ALL]
+    if not curated:
+        return 0.05
+    return 0.15 + 0.05 * min(3, len(curated))
+
+
+def _cloud_hint(m: dict, task: str | None, provs: list[dict]) -> str:
+    if provs:
+        names = ", ".join(dict.fromkeys(p["name"] for p in provs[:3]))
+        if task in CHAT_TASKS:
+            return (f"Hosted API via Hugging Face Inference Providers ({names}): POST https://router.huggingface.co/v1/chat/completions "
+                    f"with \"model\": \"{m['id']}\" and your HF token (OpenAI-compatible).")
+        meth = CLIENT_METHOD.get(task or "", "post")
+        return (f"Hosted API on {names}: `InferenceClient(provider=\"{provs[0]['name']}\").{meth}(..., model=\"{m['id']}\")` "
+                "with huggingface_hub and your HF token.")
+    if task in CHAT_TASKS:
+        return f"Self-host on {_gpu_for(m.get('ram_gb'))}: `vllm serve {m['id']}` (OpenAI-compatible API)."
+    return f"Self-host on {_gpu_for(m.get('ram_gb'))} (Hugging Face Inference Endpoints or your own server)."
 
 
 def _model_obj(res: dict) -> dict:
@@ -41,7 +94,8 @@ def _candidates(step: dict, device: dict, goal: str, share_gb: float | None = No
     the device memory; for quality-sensitive tasks the biggest model within it gets a boost."""
     p = _step_plan(step, device)
     ranked, relaxed = query.search_ranked(p, query.search_text(p))
-    pool = ranked[:20]
+    # cloud: a wider shortlist so hosted-API models (fewer, but no servers to run) get a chance
+    pool = ranked[:40] if device.get("kind") == "server" else ranked[:20]
     with catalog.session() as con:
         roots = catalog.get_many(con, list({r.get("family_root") or r["id"] for _, r in pool}))
         pin = (step.get("constraints") or {}).get("pin_model")
@@ -71,15 +125,28 @@ def _candidates(step: dict, device: dict, goal: str, share_gb: float | None = No
     elif prefer == "most_popular":
         head = sorted(pool[:8], key=lambda x: -(x[1].get("downloads") or 0))
         pool = head + pool[8:]
+    cloud = (device.get("kind") == "server")
+    provs = providers.get_many([r["id"] for _, r in pool] + ([pinned["id"]] if pinned else []))
+    if cloud:  # a live hosted API means no servers to run: prefer those, keep self-hosting as alternatives
+        def cloud_key(x):
+            bonus = _hosted_bonus(_matching(provs.get(x[1]["id"], []), step.get("task")))
+            good_hosted = bonus >= 0.15 and fit.get(x[1]["id"], 0.6) >= 0.5  # curated host + Jev thinks it fits
+            return (not good_hosted, -(x[0] + bonus))
+        pool = sorted(pool, key=cloud_key)
     out = []
-    if pinned:
-        out.append(_model_obj({**query.to_result(pinned, 1.0, p), "fit": None}))
-    for s, rec in pool:
-        if pinned and rec["id"] == pinned["id"]:
-            continue
+    picks = ([(1.0, pinned)] if pinned else []) + [(s, r) for s, r in pool if not (pinned and r["id"] == pinned["id"])]
+    for s, rec in picks:
         res = query.to_result(rec, s, p)
         res["fit"] = round(fit[rec["id"]], 3) if rec["id"] in fit else None
-        out.append(_model_obj(res))
+        m = _model_obj(res)
+        live = _matching(provs.get(rec["id"], []), step.get("task"))
+        m["providers"] = [{k: pr[k] for k in ("name", "price_in", "price_out", "tokens_per_s", "latency_ms")} for pr in live]
+        if cloud:
+            m["hosting"] = "hosted_api" if live else "gpu_server"
+            m["how_to_run"] = _cloud_hint(m, step.get("task"), live)
+        else:
+            m["hosting"] = "local"
+        out.append(m)
     return out[: 1 + ALTERNATIVES], relaxed
 
 
@@ -112,7 +179,24 @@ def _layout(nodes: list[dict], edges: list[dict], old_pos: dict[str, dict]) -> N
         n["position"] = old_pos.get(n["id"]) or default
 
 
-def _budget(nodes: list[dict], cap: float | None) -> dict:
+def _cloud_budget(nodes: list[dict]) -> dict:
+    models = [n for n in nodes if n.get("model")]
+    hosted = [n for n in models if n["model"].get("hosting") == "hosted_api"]
+    servers = [n for n in models if n["model"].get("hosting") == "gpu_server"]
+    total = round(sum((n["model"].get("ram_gb") or 0) for n in servers), 2)
+    parts = []
+    if hosted:
+        names = ", ".join(f"{n['title']} ({n['model']['providers'][0]['name']})" for n in hosted)
+        parts.append(f"{len(hosted)} step(s) use hosted APIs, pay per use: {names}.")
+    if servers:
+        parts.append(f"{len(servers)} step(s) need a GPU server — about {total:g} GB together: {_gpu_for(total)}.")
+    return {"mode": "cloud", "ram_cap_gb": None, "total_ram_gb": total, "fits": True,
+            "note": " ".join(parts) or "Runs in the cloud."}
+
+
+def _budget(nodes: list[dict], cap: float | None, mode: str | None = None) -> dict:
+    if mode == "cloud":
+        return _cloud_budget(nodes)
     models = [n for n in nodes if n.get("model")]
     total = round(sum((n["model"].get("ram_gb") or 0) for n in models), 2)
     unknown = [n["title"] for n in models if not n["model"].get("ram_gb")]
@@ -204,7 +288,8 @@ def build(plan: dict, goal: str, previous: dict | None = None) -> dict:
     device["ram_cap_gb"] = cap
     return {
         "id": (previous or {}).get("id"), "title": plan.get("title") or "Untitled pipeline", "goal": goal,
-        "device": device, "nodes": nodes, "edges": edges, "budget": _budget(nodes, cap),
+        "device": device, "nodes": nodes, "edges": edges,
+        "budget": _budget(nodes, cap, "cloud" if device.get("kind") == "server" else None),
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "resolve_ms": int((time.time() - t0) * 1000),
     }
@@ -221,7 +306,8 @@ def swap(pipeline: dict, node_id: str, model_id: str) -> dict:
             break
     else:
         raise KeyError(f"no model node {node_id}")
-    pipeline["budget"] = _budget(pipeline["nodes"], pipeline["device"].get("ram_cap_gb"))
+    pipeline["budget"] = _budget(pipeline["nodes"], pipeline["device"].get("ram_cap_gb"),
+                                 (pipeline.get("deployment") or {}).get("mode"))
     if not pipeline["budget"]["fits"]:
         for n in pipeline["nodes"]:
             if n["id"] == node_id:

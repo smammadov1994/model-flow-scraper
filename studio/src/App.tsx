@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import * as api from './api'
 import demoPipeline from './demo/pipeline.json'
-import type { ChatMessage, Pipeline } from './types'
+import { DEMO_ASK, demoPlan } from './demo/plan'
+import type { ChatMessage, Deployment, Pipeline } from './types'
 import ChatPanel from './components/ChatPanel'
 import Canvas from './components/Canvas'
 import Drawer from './components/Drawer'
@@ -10,7 +11,27 @@ import TopBar from './components/TopBar'
 
 const params = new URLSearchParams(window.location.search)
 const DEMO = params.get('demo') === '1'
+const DEMO_PRELOADED = DEMO && params.get('pipeline') === '1'
 const DEMO_SESSION = 'demo'
+const TARGET_KEY = 'studio.target'
+
+function loadTarget(): Deployment | null {
+  try {
+    const v = window.localStorage.getItem(TARGET_KEY)
+    return v === 'local' || v === 'phone' || v === 'cloud' ? v : null
+  } catch {
+    return null
+  }
+}
+
+function saveTarget(t: Deployment | null) {
+  try {
+    if (t) window.localStorage.setItem(TARGET_KEY, t)
+    else window.localStorage.removeItem(TARGET_KEY)
+  } catch {
+    /* storage unavailable; the choice just won't persist */
+  }
+}
 
 function setUrlSession(id: string | null) {
   const u = new URL(window.location.href)
@@ -42,6 +63,7 @@ function download(filename: string, data: unknown) {
 /** Demo-only: swap a model locally and recompute the budget like the backend would. */
 function demoSwap(p: Pipeline, nodeId: string, modelId: string): Pipeline {
   const next = clone(p)
+  if (next.budget.mode === 'cloud' || next.budget.ram_cap_gb == null) return next
   const node = next.nodes.find((n) => n.id === nodeId)
   const alt = node?.alternatives.find((a) => a.id === modelId)
   if (!node || !alt) return next
@@ -80,9 +102,11 @@ function demoN8n(p: Pipeline) {
 }
 
 export default function App() {
-  const [sessionId, setSessionId] = useState<string | null>(DEMO ? DEMO_SESSION : null)
+  const [sessionId, setSessionId] = useState<string | null>(DEMO_PRELOADED ? DEMO_SESSION : null)
+  const [target, setTargetState] = useState<Deployment | null>(loadTarget)
+  const [hardwareLabel, setHardwareLabel] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    DEMO
+    DEMO_PRELOADED
       ? [
           { role: 'user', text: (demoPipeline as unknown as Pipeline).goal ?? 'A voice assistant that runs on my iPhone' },
           {
@@ -92,13 +116,38 @@ export default function App() {
         ]
       : [],
   )
-  const [pipeline, setPipeline] = useState<Pipeline | null>(() => (DEMO ? (demoPipeline as unknown as Pipeline) : null))
+  const [pipeline, setPipeline] = useState<Pipeline | null>(() => (DEMO_PRELOADED ? (demoPipeline as unknown as Pipeline) : null))
   const [pending, setPending] = useState(false)
   const [loadingSession, setLoadingSession] = useState(!DEMO && !!params.get('s'))
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [swapping, setSwapping] = useState(false)
   const sessionRef = useRef(sessionId)
   sessionRef.current = sessionId
+
+  const setTarget = useCallback((t: Deployment | null) => {
+    setTargetState(t)
+    saveTarget(t)
+  }, [])
+
+  // This computer's hardware, shown next to the "This computer" option (omitted if unavailable)
+  useEffect(() => {
+    if (DEMO) {
+      setHardwareLabel('Apple M1 Pro · 16 GB')
+      return
+    }
+    let cancelled = false
+    api
+      .getHardware()
+      .then((h) => {
+        if (!cancelled && typeof h?.label === 'string' && h.label) setHardwareLabel(h.label)
+      })
+      .catch(() => {
+        /* optional nicety */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Restore a session from ?s=<id>
   useEffect(() => {
@@ -128,27 +177,40 @@ export default function App() {
     }
   }, [])
 
-  const send = useCallback(async (text: string) => {
+  const targetRef = useRef(target)
+  targetRef.current = target
+
+  const send = useCallback(async (text: string, deployment?: Deployment) => {
+    const dep = deployment ?? targetRef.current
     setMessages((m) => [...m, { role: 'user', text }])
     setPending(true)
     try {
       if (DEMO) {
-        await new Promise((r) => window.setTimeout(r, 1500))
-        setMessages((m) => [
-          ...m,
-          {
-            role: 'assistant',
-            text: 'Demo mode: there is no server behind this page, so I am showing the same example pipeline. Run the Model Finder web server and open /studio/ without ?demo=1 for real plans.',
-          },
-        ])
+        await new Promise((r) => window.setTimeout(r, 900))
+        if (!dep) {
+          setMessages((m) => [...m, { role: 'assistant', text: DEMO_ASK.question, ask: DEMO_ASK }])
+          return
+        }
+        const plan = demoPlan(dep)
+        setSessionId(DEMO_SESSION)
+        setMessages((m) => [...m, { role: 'assistant', text: plan.reply }])
+        setPipeline(plan.pipeline)
+        setSelectedId(null)
         return
       }
-      const res = await api.chat(sessionRef.current, text)
+      const res = await api.chat(sessionRef.current, text, dep ?? null)
       setSessionId(res.session_id)
       setUrlSession(res.session_id)
-      setMessages((m) => [...m, { role: 'assistant', text: res.reply }])
-      setPipeline(res.pipeline)
-      setSelectedId(null)
+      const reply = res.reply?.trim() ?? ''
+      if (res.ask) {
+        setMessages((m) => [...m, { role: 'assistant', text: reply || res.ask!.question, ask: res.ask }])
+      } else {
+        setMessages((m) => [...m, { role: 'assistant', text: reply }])
+      }
+      if (res.pipeline) {
+        setPipeline(res.pipeline)
+        setSelectedId(null)
+      }
     } catch (e) {
       setMessages((m) => [...m, { role: 'error', text: errText(e) }])
     } finally {
@@ -157,7 +219,6 @@ export default function App() {
   }, [])
 
   const newPipeline = useCallback(() => {
-    if (DEMO) return
     setSessionId(null)
     setPipeline(null)
     setMessages([])
@@ -209,7 +270,16 @@ export default function App() {
 
   return (
     <div className="app">
-      <ChatPanel messages={messages} pending={pending} onSend={send} onNew={newPipeline} canReset={!DEMO && (!!pipeline || messages.length > 0)} />
+      <ChatPanel
+        messages={messages}
+        pending={pending}
+        onSend={send}
+        onNew={newPipeline}
+        canReset={!!pipeline || messages.length > 0}
+        target={target}
+        onTarget={setTarget}
+        hardwareLabel={hardwareLabel}
+      />
       <main className="stage">
         <TopBar pipeline={pipeline} sessionId={sessionId} demo={DEMO} onDemoDownload={onDemoDownload} />
         <div className="canvas-wrap">

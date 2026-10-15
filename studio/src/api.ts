@@ -1,4 +1,4 @@
-import type { ChatResponse, Pipeline, SessionResponse } from './types'
+import type { ChatResponse, Deployment, HardwareResponse, Pipeline, SessionResponse } from './types'
 
 const UNREACHABLE = "Can't reach the Model Studio server. Is it running?"
 
@@ -31,8 +31,13 @@ const post = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-export const chat = (sessionId: string | null, message: string) =>
-  request<ChatResponse>('/api/studio/chat', post({ session_id: sessionId, message }))
+export const chat = (sessionId: string | null, message: string, deployment: Deployment | null = null) =>
+  request<ChatResponse>(
+    '/api/studio/chat',
+    post(deployment ? { session_id: sessionId, message, deployment } : { session_id: sessionId, message }),
+  )
+
+export const getHardware = () => request<HardwareResponse>('/api/studio/hardware')
 
 export const getSession = (id: string) =>
   request<SessionResponse>(`/api/studio/sessions/${encodeURIComponent(id)}`)

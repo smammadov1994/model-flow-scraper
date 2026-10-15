@@ -51,6 +51,11 @@ def _code_for(n: dict) -> str:
     return "\n".join(lines) + "\nreturn $input.all();"
 
 
+def _is_hosted_chat(n: dict) -> bool:
+    m = n.get("model") or {}
+    return m.get("hosting") == "hosted_api" and n.get("task") in ("text-generation", "image-text-to-text")
+
+
 def _is_ollama_llm(n: dict) -> bool:
     m = n.get("model") or {}
     return n.get("task") in ("text-generation", "image-text-to-text") and m.get("format") == "gguf" and bool(m.get("variant"))
@@ -71,7 +76,19 @@ def export(pipeline: dict) -> dict:
         label = n["title"] if n["type"] != "model" else f"{n['title']} ({(n.get('model') or {}).get('id', 'no model')})"
         name = _unique(label, used)
         names[n["id"]] = name
-        if _is_ollama_llm(n):
+        if _is_hosted_chat(n):
+            m = n["model"]
+            # OpenAI-compatible chat completions through Hugging Face Inference Providers (auto-routes to a provider)
+            body = (f"={{{{ JSON.stringify({{ model: {json.dumps(m['id'])}, messages: [{{ role: 'user', "
+                    "content: $json.text || $json.input || '' }] }) }}")
+            nodes.append({"id": _uid(pid, n["id"]), "name": name, "type": HTTP[0], "typeVersion": HTTP[1], "position": xy,
+                          "parameters": {"method": "POST", "url": "https://router.huggingface.co/v1/chat/completions",
+                                         "sendHeaders": True,
+                                         "headerParameters": {"parameters": [
+                                             {"name": "Authorization", "value": "Bearer PASTE_YOUR_HF_TOKEN"}]},
+                                         "sendBody": True, "contentType": "json", "specifyBody": "json",
+                                         "jsonBody": body, "options": {}}})
+        elif _is_ollama_llm(n):
             m = n["model"]
             repo = m.get("variant_repo") or m["id"]
             # the whole body must be one expression (a parameter string starting with "=" is evaluated);
@@ -86,7 +103,9 @@ def export(pipeline: dict) -> dict:
                           "parameters": {"mode": "runOnceForAllItems", "language": "javaScript", "jsCode": _code_for(n)}})
         if n.get("model"):
             m = n["model"]
-            pull = (f"\n\nBefore running: `ollama pull hf.co/{m.get('variant_repo') or m['id']}:{m['variant']}`"
+            pull = ("\n\nBefore running: replace PASTE_YOUR_HF_TOKEN in the node's Authorization header with a "
+                    "Hugging Face token (better: an n8n Header Auth credential)." if _is_hosted_chat(n) else
+                    f"\n\nBefore running: `ollama pull hf.co/{m.get('variant_repo') or m['id']}:{m['variant']}`"
                     if _is_ollama_llm(n) else "")
             note = (f"## {task_label(n.get('task'))}\n**[{m['id']}]({m.get('url')})**\n\n"
                     + (f"~{m['ram_gb']} GB · " if m.get("ram_gb") else "") + f"{m.get('license') or 'license: see card'}\n\n"

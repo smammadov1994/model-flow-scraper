@@ -76,6 +76,7 @@ STUDIO_DIR = STATIC / "studio"
 class StudioChat(BaseModel):
     session_id: str | None = None
     message: str = Field(min_length=2, max_length=2000)
+    deployment: str | None = None  # local | phone | cloud (target switch / "where should it run?" button)
 
 
 class StudioSwap(BaseModel):
@@ -96,9 +97,16 @@ def _err(e: Exception, status: int = 500) -> JSONResponse:
 @app.post("/api/studio/chat")
 async def studio_chat(body: StudioChat):
     try:
-        return await run_in_threadpool(studio.chat, body.session_id, body.message)
+        return await run_in_threadpool(studio.chat, body.session_id, body.message, body.deployment)
     except Exception as e:  # noqa: BLE001
         return _err(e)
+
+
+@app.get("/api/studio/hardware")
+def studio_hardware():
+    from .studio import hardware
+
+    return hardware.detect()
 
 
 @app.get("/api/studio/sessions/{sid}")

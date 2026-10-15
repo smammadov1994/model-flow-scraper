@@ -1,5 +1,5 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
-import type { NodeStatus, PipelineNode } from '../types'
+import type { Hosting, NodeStatus, PipelineNode } from '../types'
 import { taskLabel } from '../taskLabels'
 import { Glyph, glyphFor } from './Glyph'
 
@@ -15,6 +15,17 @@ export const STATUS_LABEL: Record<NodeStatus, string> = {
 
 export function StatusBadge({ status }: { status: NodeStatus }) {
   return <span className={`badge badge-${status}`}>{STATUS_LABEL[status] ?? status}</span>
+}
+
+export const HOSTING_LABEL: Record<Hosting, string> = {
+  local: 'Runs locally',
+  hosted_api: 'Hosted API',
+  gpu_server: 'GPU server',
+}
+
+export function HostingBadge({ hosting }: { hosting: Hosting | null | undefined }) {
+  if (!hosting || !(hosting in HOSTING_LABEL)) return null
+  return <span className={`chip chip-host chip-host-${hosting}`}>{HOSTING_LABEL[hosting]}</span>
 }
 
 export function fitPercent(fit: number | null | undefined): string | null {
@@ -48,6 +59,7 @@ export function ModelNodeCard({ data, selected }: NodeProps<StudioNode>) {
               {typeof m.ram_gb === 'number' ? <span className="chip">~{m.ram_gb} GB RAM</span> : null}
               {m.format ? <span className="chip">{m.format}</span> : null}
               {fit ? <span className="chip chip-fit">fit {fit}</span> : null}
+              <HostingBadge hosting={m.hosting} />
             </div>
           </>
         ) : (
