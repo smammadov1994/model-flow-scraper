@@ -166,15 +166,35 @@ def cmd_ask(a):
     print(f"\n({t['total']} ms: " + ", ".join(f"{k} {v}" for k, v in t.items() if k != "total") + ")")
 
 
+def _stop_server(port: int) -> bool:
+    """Stop whatever process listens on the web port (by port, not by name — a name match can hit your own shell)."""
+    import os
+    import signal
+    import subprocess
+    import time
+
+    pids = [int(p) for p in subprocess.run(["lsof", "-t", f"-iTCP:{port}", "-sTCP:LISTEN"], capture_output=True,
+                                           text=True).stdout.split() if p.isdigit() and int(p) != os.getpid()]
+    for pid in pids:
+        os.kill(pid, signal.SIGTERM)
+    for _ in range(50):
+        if not subprocess.run(["lsof", "-t", f"-iTCP:{port}", "-sTCP:LISTEN"], capture_output=True, text=True).stdout.strip():
+            break
+        time.sleep(0.2)
+    return bool(pids)
+
+
 def cmd_serve(a):
     import httpx
     import uvicorn
 
     _need_qdrant()
+    if a.restart and _stop_server(a.port):
+        print("Stopped the running server.")
     try:
         if httpx.get(f"http://127.0.0.1:{a.port}/api/stats", timeout=3).status_code == 200:
             print(f"Model Finder is already running at http://localhost:{a.port} — nothing to do.")
-            print("(To restart it: pkill -f 'model-finder serve', then run this again.)")
+            print("(To restart it, e.g. after changing .env:  model-finder serve --restart)")
             return
     except httpx.HTTPError:
         pass
@@ -255,6 +275,7 @@ def main(argv=None):
 
     s = sub.add_parser("serve", help="local web page")
     s.add_argument("--port", type=int, default=config.WEB_PORT)
+    s.add_argument("--restart", action="store_true", help="stop the running server first (e.g. after editing .env)")
     s.set_defaults(fn=cmd_serve)
 
     s = sub.add_parser("stats")
