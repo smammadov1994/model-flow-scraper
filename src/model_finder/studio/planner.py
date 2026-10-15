@@ -110,8 +110,8 @@ def _cli_logged_in() -> bool:
     if _cli_ok is None:
         try:
             out = subprocess.run(["claude", "auth", "status"], capture_output=True, text=True, timeout=15)
-            _cli_ok = out.returncode == 0 and "not logged in" not in (out.stdout + out.stderr).lower()
-        except (OSError, subprocess.TimeoutExpired):
+            _cli_ok = out.returncode == 0 and bool(json.loads(out.stdout or "{}").get("loggedIn"))
+        except (OSError, subprocess.TimeoutExpired, ValueError):
             _cli_ok = False
     return _cli_ok
 
