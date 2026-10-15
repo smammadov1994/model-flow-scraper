@@ -183,7 +183,7 @@ def cmd_serve(a):
 
 
 def cmd_stats(a):
-    from . import catalog, index, llm
+    from . import catalog, index, jev, llm
 
     with catalog.session() as con:
         print(json.dumps({
@@ -192,6 +192,7 @@ def cmd_stats(a):
             "last_seed": catalog.kv_get(con, "last_seed"),
             "last_update": catalog.kv_get(con, "last_update"),
             "llm": llm.name(),
+            "parser": jev.name() if jev.available() else llm.name(),
         }, indent=2, default=str))
 
 

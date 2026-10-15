@@ -1,0 +1,30 @@
+Looking for: text-to-speech · device: phone (≤4 GB)  [parsed by jev:jev-latest]
+Try hexgrad/Kokoro-82M first (use the q4 build onnx-community/Kokoro-82M-v1.0-ONNX) — about 0.06 GB
+1. hexgrad/Kokoro-82M  [phone]  fit 0.85  https://huggingface.co/hexgrad/Kokoro-82M
+2. openbmb/VoxCPM2  [phone]  fit 0.76  https://huggingface.co/openbmb/VoxCPM2
+3. Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice  [phone]  fit 0.83  https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice
+4. Qwen/Qwen3-TTS-12Hz-1.7B-Base  [phone]  fit 0.80  https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base
+5. microsoft/VibeVoice-1.5B  [phone]  fit 0.78  https://huggingface.co/microsoft/VibeVoice-1.5B
+6. pnnbao-ump/VieNeu-TTS-v3-Turbo  [phone]  fit 0.82  https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo
+(535 ms: parse 118, search 237, rerank 177)
+
+Looking for: text-generation · device: mac (≤12 GB)  [parsed by jev:jev-latest]
+Try Qwen/Qwen2.5-Coder-7B-Instruct first (use the Q4_K_M build Qwen/Qwen2.5-Coder-7B-Instruct-GGUF)
+1. Qwen/Qwen2.5-Coder-7B-Instruct  [phone]  fit 0.91  https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct
+2. zhuyaoyu/CodeV-R1-RL-Qwen-7B  [phone]  fit 0.85  https://huggingface.co/zhuyaoyu/CodeV-R1-RL-Qwen-7B
+3. Qwen/Qwen2.5-Coder-14B-Instruct  [laptop]  fit 0.78  https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct
+4. emperorofrome/Gmcoder  [laptop]  fit 0.87  https://huggingface.co/emperorofrome/Gmcoder
+5. mradermacher/Andromeda-8B-Coder-i1-GGUF  [laptop]  fit 0.90  https://huggingface.co/mradermacher/Andromeda-8B-Coder-i1-GGUF
+6. Qwen/Qwen2.5-Coder-3B-Instruct  [phone]  fit 0.92  https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct
+(1332 ms: parse 161, search 956, rerank 214)
+
+Looking for: text-to-image · device: gpu (≤8 GB)  [parsed by jev:jev-latest]
+Try stabilityai/stable-diffusion-xl-base-1.0 first (use the Q4_K_S build Old-
+1. stabilityai/stable-diffusion-xl-base-1.0  [phone]  fit 0.84  https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+2. stable-diffusion-v1-5/stable-diffusion-v1-5  [phone]  fit 0.96  https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
+3. Tongyi-MAI/Z-Image-Turbo  [phone]  fit 0.91  https://huggingface.co/Tongyi-MAI/Z-Image-Turbo
+4. circlestone-labs/Anima  [phone]  fit 0.91  https://huggingface.co/circlestone-labs/Anima
+5. Qwen/Qwen-Image-2.1  [laptop]  fit 0.88  https://huggingface.co/Qwen/Qwen-Image-2.1
+6. black-forest-labs/FLUX.1-dev  [laptop]  fit 0.84  https://huggingface.co/black-forest-labs/FLUX.1-dev
+(458 ms: parse 137, search 215, rerank 105)
+

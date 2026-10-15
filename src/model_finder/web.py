@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import catalog, index, llm, query
+from . import catalog, index, jev, llm, query
 
 STATIC = Path(__file__).parent / "static"
 app = FastAPI(title="Model Finder")
@@ -58,5 +58,5 @@ def stats():
             "models_indexed": index.count(),
             "last_seed": _iso(seed.get("snapshot_mtime")),
             "last_update": _iso(catalog.kv_get(con, "last_update")),
-            "llm_backend": llm.name(),
+            "llm_backend": jev.name() if jev.available() else llm.name(),
         }

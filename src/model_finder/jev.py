@@ -69,7 +69,9 @@ def parse(question: str) -> dict:
                                  criteria={"true": "commercial use, open-source or license terms are asked for",
                                            "false": "licensing is not mentioned"}),
             "newest": Noul(instructions="Does `request` ask for new, latest, or recently released models?"),
-            "code": Noul(instructions="Is `request` about writing, completing, or understanding programming code?"),
+            # phrased as "a model that helps with ..." — Jev reads literally; the earlier wording scored 0.38 on
+            # "small coding model", this one 0.97
+            "code": Noul(instructions="Is `request` asking for a model that helps with programming or coding?"),
             "voice_clone": Noul(instructions="Does `request` involve cloning or imitating a specific person's voice?"),
         },
     )
